@@ -6,6 +6,7 @@
 #include <choc_ReenableAllWarnings.h>
 
 #include <visage/app.h>
+#include <FastFourier/FastFourier.h>
 
 using ClapPlugin =
     clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
@@ -19,6 +20,11 @@ class Plugin : public ClapPlugin
     ~Plugin() override;
 
 protected:
+    bool activate(double sampleRate, uint32_t minFrameCount, uint32_t maxFrameCount) noexcept override;
+    void deactivate() noexcept override;
+
+    clap_process_status process(const clap_process *process) noexcept override;
+
     bool implementsGui() const noexcept override { return true; }
     bool guiIsApiSupported(const char* api, bool is_floating) noexcept override;
     bool guiCreate(const char* api, bool is_floating) noexcept override;
@@ -32,5 +38,7 @@ protected:
     bool guiGetSize(uint32_t* width, uint32_t* height) noexcept override;
 
 private:
+    std::unique_ptr<FastFourier> mFft;
+
     std::unique_ptr<visage::ApplicationWindow> mApp;
 };

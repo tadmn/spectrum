@@ -21,6 +21,25 @@ Plugin::Plugin(const clap_host *host) : ClapPlugin(&Plugin::descriptor, host)
 
 Plugin::~Plugin() = default;
 
+bool Plugin::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept
+{
+    mFft = std::make_unique<FastFourier>(1024);
+    return true;
+}
+
+void Plugin::deactivate() noexcept
+{
+}
+
+clap_process_status Plugin::process(const clap_process */*process*/) noexcept
+{
+    std::array<float, 1024> in;
+    std::array<std::complex<float>, 1024 / 2 + 1> out;
+    mFft->forward(in.data(), out.data());
+
+    return CLAP_PROCESS_CONTINUE;
+}
+
 bool Plugin::guiIsApiSupported(char const *api, bool is_floating) noexcept
 {
     if (is_floating)

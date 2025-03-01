@@ -68,7 +68,7 @@ add_library(${PROJECT_NAME} MODULE
   src/PluginEntry.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} clap clap-helpers visage)
+target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
 
 if(APPLE)
