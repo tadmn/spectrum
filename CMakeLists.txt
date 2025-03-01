@@ -16,7 +16,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 
 if(APPLE)
   option(USE_SANITIZER "Build and link with ASAN" FALSE)
@@ -50,10 +50,17 @@ FetchContent_Declare(FastFourier GIT_REPOSITORY https://github.com/tadmn/FastFou
   EXCLUDE_FROM_ALL
 )
 
+FetchContent_Declare(visage GIT_REPOSITORY https://github.com/VitalAudio/visage.git
+  GIT_TAG main
+  GIT_SHALLOW TRUE
+  EXCLUDE_FROM_ALL
+)
+
 FetchContent_MakeAvailable(clap)
 FetchContent_MakeAvailable(clap_helpers)
 FetchContent_MakeAvailable(choc)
 FetchContent_MakeAvailable(FastFourier)
+FetchContent_MakeAvailable(visage)
 
 add_library(${PROJECT_NAME} MODULE
   src/Plugin.cpp
@@ -61,10 +68,7 @@ add_library(${PROJECT_NAME} MODULE
   src/PluginEntry.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} clap clap-helpers)
-
-# I recommend using SYSTEM when dealing with 3rd party code.
-# Avoids the hassle of warnings from a library you don't own.
+target_link_libraries(${PROJECT_NAME} clap clap-helpers visage)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
 
 if(APPLE)
