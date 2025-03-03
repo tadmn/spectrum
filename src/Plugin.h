@@ -5,8 +5,10 @@
 #include <clap/helpers/plugin.hh>
 #include <choc_ReenableAllWarnings.h>
 
-#include <visage/app.h>
 #include <FastFourier/FastFourier.h>
+#include <farbot/RealtimeObject.hpp>
+
+#include <visage/app.h>
 
 using ClapPlugin =
     clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
@@ -38,7 +40,11 @@ protected:
     bool guiGetSize(uint32_t* width, uint32_t* height) noexcept override;
 
 private:
-    std::unique_ptr<FastFourier> mFft;
+    static constexpr int kFftSize = 1024;
+    FastFourier mFft;
+    using FftComplexOutput = std::array<std::complex<float>, kFftSize / 2 + 1>;
+    using RealtimeObject = farbot::RealtimeObject<FftComplexOutput, farbot::RealtimeObjectOptions::realtimeMutatable>;
+    RealtimeObject mFftComplexOutput;
 
     std::unique_ptr<visage::ApplicationWindow> mApp;
 };

@@ -36,14 +36,6 @@ FetchContent_Declare(clap_helpers GIT_REPOSITORY https://github.com/free-audio/c
   EXCLUDE_FROM_ALL
 )
 
-# Bit of a hack for header-only lib with no cmake support.
-# See https://stackoverflow.com/questions/79261625/cmake-fetchcontent-with-header-only-project.
-FetchContent_Declare(choc GIT_REPOSITORY https://github.com/Tracktion/choc.git
-  GIT_TAG main
-  GIT_SHALLOW TRUE
-  SOURCE_SUBDIR ""
-)
-
 FetchContent_Declare(FastFourier GIT_REPOSITORY https://github.com/tadmn/FastFourier.git
   GIT_TAG master
   GIT_SHALLOW TRUE
@@ -56,10 +48,25 @@ FetchContent_Declare(visage GIT_REPOSITORY https://github.com/VitalAudio/visage.
   EXCLUDE_FROM_ALL
 )
 
+# Bit of a hack for header-only libs with no cmake support.
+# See https://stackoverflow.com/questions/79261625/cmake-fetchcontent-with-header-only-project.
+FetchContent_Declare(choc GIT_REPOSITORY https://github.com/Tracktion/choc.git
+  GIT_TAG main
+  GIT_SHALLOW TRUE
+  SOURCE_SUBDIR ""
+)
+
+FetchContent_Declare(farbot GIT_REPOSITORY https://github.com/tadmn/farbot.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+  SOURCE_SUBDIR ""
+)
+
 FetchContent_MakeAvailable(clap)
 FetchContent_MakeAvailable(clap_helpers)
 FetchContent_MakeAvailable(choc)
 FetchContent_MakeAvailable(FastFourier)
+FetchContent_MakeAvailable(farbot)
 FetchContent_MakeAvailable(visage)
 
 add_library(${PROJECT_NAME} MODULE
@@ -70,6 +77,7 @@ add_library(${PROJECT_NAME} MODULE
 
 target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/farbot-src/include")
 
 if(APPLE)
   set_target_properties(${PROJECT_NAME} PROPERTIES

@@ -15,7 +15,7 @@ clap_plugin_descriptor Plugin::descriptor = {.clap_version = CLAP_VERSION,
                                                .version = "0.0.0",
                                                .description = "Spectrum"};
 
-Plugin::Plugin(const clap_host *host) : ClapPlugin(&Plugin::descriptor, host)
+Plugin::Plugin(const clap_host *host) : ClapPlugin(&Plugin::descriptor, host), mFft(kFftSize)
 {
 }
 
@@ -23,7 +23,6 @@ Plugin::~Plugin() = default;
 
 bool Plugin::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept
 {
-    mFft = std::make_unique<FastFourier>(1024);
     return true;
 }
 
@@ -34,8 +33,11 @@ void Plugin::deactivate() noexcept
 clap_process_status Plugin::process(const clap_process */*process*/) noexcept
 {
     std::array<float, 1024> in;
-    std::array<std::complex<float>, 1024 / 2 + 1> out;
-    mFft->forward(in.data(), out.data());
+
+    {
+        RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
+        mFft.forward(in.data(), fftOut->data());
+    }
 
     return CLAP_PROCESS_CONTINUE;
 }
