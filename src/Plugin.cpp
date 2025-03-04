@@ -15,7 +15,8 @@ clap_plugin_descriptor Plugin::descriptor = {.clap_version = CLAP_VERSION,
                                                .version = "0.0.0",
                                                .description = "Spectrum"};
 
-Plugin::Plugin(const clap_host *host) : ClapPlugin(&Plugin::descriptor, host), mFft(kFftSize)
+Plugin::Plugin(const clap_host *host)
+    : ClapPlugin(&Plugin::descriptor, host), mFifoBuffer(1, kFftSize), mFft(kFftSize)
 {
 }
 
@@ -30,16 +31,50 @@ void Plugin::deactivate() noexcept
 {
 }
 
-clap_process_status Plugin::process(const clap_process */*process*/) noexcept
+void Plugin::reset() noexcept
 {
-    std::array<float, 1024> in;
+    mFifoBuffer.clear();
+}
 
-    {
-        RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
-        mFft.forward(in.data(), fftOut->data());
+clap_process_status Plugin::process(const clap_process *process) noexcept
+{
+    auto in = cb::createChannelArrayView(process->audio_inputs->data32, process->audio_inputs->channel_count,
+                                         process->frames_count);
+
+    while (in.getNumFrames() > 0) {
+        in = mFifoBuffer.push(in);
+        if (mFifoBuffer.isFull()) {
+            {
+                RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
+                mFft.forward(mFifoBuffer.getBuffer().getIterator(0).sample, fftOut->data());
+            }
+
+            mFifoBuffer.pop(kFftHopSize);
+        }
+    }
+
+    // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling.
+    if (process->audio_inputs->data32 != process->audio_outputs->data32) {
+        cb::copy(cb::createChannelArrayView(process->audio_outputs->data32, process->audio_outputs->channel_count,
+                                            process->frames_count),
+                 cb::createChannelArrayView(process->audio_inputs->data32, process->audio_inputs->channel_count,
+                                            process->frames_count));
     }
 
     return CLAP_PROCESS_CONTINUE;
+}
+
+bool Plugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_info *info) const noexcept
+{
+    if (index != 0)
+        return false;
+
+    info->id = 0;
+    info->flags = CLAP_AUDIO_PORT_IS_MAIN;
+    info->channel_count = 1;
+    info->in_place_pair = 0;
+
+    return true;
 }
 
 bool Plugin::guiIsApiSupported(char const *api, bool is_floating) noexcept

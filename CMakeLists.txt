@@ -73,9 +73,11 @@ add_library(${PROJECT_NAME} MODULE
   src/Plugin.cpp
   src/Plugin.h
   src/PluginEntry.cpp
+  src/FifoBuffer.h
 )
 
 target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage)
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/audio")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/farbot-src/include")
 
