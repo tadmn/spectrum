@@ -108,20 +108,19 @@ bool Plugin::guiCreate(char const */*api*/, bool is_floating) noexcept
     mApp->setWindowDimensions(50, 50);
 
     mApp->onDraw() = [this](visage::Canvas& canvas) {
-        canvas.setColor(0xff000066);
+        canvas.setColor(0xff000000);
         canvas.fill(0, 0, mApp->width(), mApp->height());
-
-        float circle_radius = mApp->height() * 0.1f;
-        float x = mApp->width() * 0.5f - circle_radius;
-        float y = mApp->height() * 0.5f - circle_radius;
-        canvas.setColor(0xff00ffff);
-        canvas.circle(x, y, 2.0f * circle_radius);
     };
 
     mApp->onWindowContentsResized() = [this] {
         _host.guiRequestResize(static_cast<uint32_t>(mApp->logicalWidth()),
                                static_cast<uint32_t>(mApp->logicalHeight()));
+
+        mAnimatedLine->setBounds(0, 0, mApp->width(), mApp->height());
     };
+
+    mAnimatedLine = std::make_unique<AnimatedLine>(*this);
+    mApp->addChild(*mAnimatedLine);
 
     return true;
 }

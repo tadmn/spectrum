@@ -14,6 +14,8 @@
 #include <visage/app.h>
 #include <visage/graphics.h>
 
+#include "visage_widgets/graph_line.h"
+
 using ClapPlugin =
     clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
 
@@ -21,7 +23,7 @@ namespace cb = choc::buffer;
 
 class Plugin : public ClapPlugin
 {
-  public:
+public:
     static clap_plugin_descriptor descriptor;
 
     explicit Plugin(const clap_host *host);
@@ -54,11 +56,57 @@ private:
     static constexpr uint kFftSize = 1024;
     static constexpr uint kFftHopSize = 256;
 
+    static constexpr uint kNumFftBins = kFftSize / 2 + 1;
+
     FifoBuffer<float> mFifoBuffer;
     FastFourier mFft;
-    using FftComplexOutput = std::array<std::complex<float>, kFftSize / 2 + 1>;
+    using FftComplexOutput = std::array<std::complex<float>, kNumFftBins>;
     using RealtimeObject = farbot::RealtimeObject<FftComplexOutput, farbot::RealtimeObjectOptions::realtimeMutatable>;
     RealtimeObject mFftComplexOutput;
 
     std::unique_ptr<visage::ApplicationWindow> mApp;
+
+    class AnimatedLine : public visage::Frame
+    {
+    public:
+        AnimatedLine(Plugin & p) : mPlugin(p), mLine(Plugin::kNumFftBins)
+        {
+            addChild(mLine);
+            setIgnoresMouseEvents(true, false);
+        }
+
+        void resized() override
+        {
+            mLine.setBounds(0, 0, width(), height());
+        }
+
+        void draw(visage::Canvas &canvas) override
+        {
+            FftComplexOutput fftOut;
+
+            {
+                RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> f(mPlugin.mFftComplexOutput);
+                fftOut = *f;
+            }
+
+            canvas.setColor(0xffffffff);
+
+            for (uint i = 0; i < fftOut.size(); ++i)
+            {
+                float x = static_cast<float>(i) / static_cast<float>(fftOut.size());
+                auto const mag = std::abs(fftOut[i]);
+                float y = 1.f - static_cast<float>(mag) / 100.f;
+                mLine.setXAt((int)i, x * mLine.width());
+                mLine.setYAt((int)i, y * mLine.height());
+            }
+
+            redraw();
+        }
+
+    private:
+        Plugin & mPlugin;
+        visage::GraphLine mLine;
+    };
+
+    std::unique_ptr<visage::Frame> mAnimatedLine;
 };
