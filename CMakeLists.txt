@@ -69,12 +69,8 @@ FetchContent_MakeAvailable(FastFourier)
 FetchContent_MakeAvailable(farbot)
 FetchContent_MakeAvailable(visage)
 
-add_library(${PROJECT_NAME} MODULE
-  src/Plugin.cpp
-  src/Plugin.h
-  src/PluginEntry.cpp
-  src/FifoBuffer.h
-)
+file(GLOB SOURCE_FILES src/*.cpp src/*.h)
+add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/audio")

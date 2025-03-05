@@ -1,11 +1,12 @@
 
-#include "Plugin.h"
+#include "Spectrum.h"
+#include "MainGuiFrame.h"
 
 #include <choc_DisableAllWarnings.h>
 #include <clap/helpers/plugin.hxx>
 #include <choc_ReenableAllWarnings.h>
 
-clap_plugin_descriptor Plugin::descriptor = {.clap_version = CLAP_VERSION,
+clap_plugin_descriptor Spectrum::descriptor = {.clap_version = CLAP_VERSION,
                                                .id = "com.tadmn.spectrum",
                                                .name = "Spectrum",
                                                .vendor = "tadmn",
@@ -15,28 +16,30 @@ clap_plugin_descriptor Plugin::descriptor = {.clap_version = CLAP_VERSION,
                                                .version = "0.0.0",
                                                .description = "Spectrum"};
 
-Plugin::Plugin(const clap_host *host)
-    : ClapPlugin(&Plugin::descriptor, host), mFifoBuffer(1, kFftSize), mFft(kFftSize)
+Spectrum::Spectrum(const clap_host *host)
+    : ClapPlugin(&Spectrum::descriptor, host), mFifoBuffer(1, kFftSize), mFft(kFftSize)
 {
+    mFftInBuffer.resize({.numChannels = 1, .numFrames = kFftSize});
+    updateWindowingValues();
 }
 
-Plugin::~Plugin() = default;
+Spectrum::~Spectrum() = default;
 
-bool Plugin::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept
+bool Spectrum::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept
 {
     return true;
 }
 
-void Plugin::deactivate() noexcept
+void Spectrum::deactivate() noexcept
 {
 }
 
-void Plugin::reset() noexcept
+void Spectrum::reset() noexcept
 {
     mFifoBuffer.clear();
 }
 
-clap_process_status Plugin::process(const clap_process *process) noexcept
+clap_process_status Spectrum::process(const clap_process *process) noexcept
 {
     auto in = cb::createChannelArrayView(process->audio_inputs->data32, process->audio_inputs->channel_count,
                                          process->frames_count);
@@ -44,9 +47,16 @@ clap_process_status Plugin::process(const clap_process *process) noexcept
     while (in.getNumFrames() > 0) {
         in = mFifoBuffer.push(in);
         if (mFifoBuffer.isFull()) {
+            // Make a copy of the accumulated samples, so that when we window them we don't affect the overlapping
+            // samples in the next chunk.
+            cb::copy(mFftInBuffer, mFifoBuffer.getBuffer());
+
+            // Apply windowing.
+            cb::applyGainPerFrame(mFftInBuffer, [this](auto i) { return mWindow[i]; });
+
             {
                 RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
-                mFft.forward(mFifoBuffer.getBuffer().getIterator(0).sample, fftOut->data());
+                mFft.forward(mFftInBuffer.getIterator(0).sample, fftOut->data());
             }
 
             mFifoBuffer.pop(kFftHopSize);
@@ -64,7 +74,7 @@ clap_process_status Plugin::process(const clap_process *process) noexcept
     return CLAP_PROCESS_CONTINUE;
 }
 
-bool Plugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_info *info) const noexcept
+bool Spectrum::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_info *info) const noexcept
 {
     if (index != 0)
         return false;
@@ -77,7 +87,7 @@ bool Plugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_in
     return true;
 }
 
-bool Plugin::guiIsApiSupported(char const *api, bool is_floating) noexcept
+bool Spectrum::guiIsApiSupported(char const *api, bool is_floating) noexcept
 {
     if (is_floating)
         return false;
@@ -96,7 +106,7 @@ bool Plugin::guiIsApiSupported(char const *api, bool is_floating) noexcept
     return false;
 }
 
-bool Plugin::guiCreate(char const */*api*/, bool is_floating) noexcept
+bool Spectrum::guiCreate(char const */*api*/, bool is_floating) noexcept
 {
     if (is_floating)
         return false;
@@ -116,16 +126,16 @@ bool Plugin::guiCreate(char const */*api*/, bool is_floating) noexcept
         _host.guiRequestResize(static_cast<uint32_t>(mApp->logicalWidth()),
                                static_cast<uint32_t>(mApp->logicalHeight()));
 
-        mAnimatedLine->setBounds(0, 0, mApp->width(), mApp->height());
+        for (auto * child : mApp->children())
+            child->setBounds(0, 0, mApp->width(), mApp->height());
     };
 
-    mAnimatedLine = std::make_unique<AnimatedLine>(*this);
-    mApp->addChild(*mAnimatedLine);
+    mApp->addChild(std::make_unique<MainGuiFrame>(*this));
 
     return true;
 }
 
-void Plugin::guiDestroy() noexcept
+void Spectrum::guiDestroy() noexcept
 {
 #if __linux__
     if (mApp && mApp->window() && _host.canUsePosixFdSupport())
@@ -135,7 +145,7 @@ void Plugin::guiDestroy() noexcept
     mApp->close();
 }
 
-bool Plugin::guiSetParent(clap_window const *window) noexcept
+bool Spectrum::guiSetParent(clap_window const *window) noexcept
 {
     if (mApp == nullptr)
         return false;
@@ -151,7 +161,7 @@ bool Plugin::guiSetParent(clap_window const *window) noexcept
     return true;
 }
 
-bool Plugin::guiGetResizeHints(clap_gui_resize_hints_t *hints) noexcept
+bool Spectrum::guiGetResizeHints(clap_gui_resize_hints_t *hints) noexcept
 {
     if (mApp == nullptr)
         return false;
@@ -168,7 +178,7 @@ bool Plugin::guiGetResizeHints(clap_gui_resize_hints_t *hints) noexcept
     return true;
 }
 
-bool Plugin::guiAdjustSize(uint32_t *width, uint32_t *height) noexcept
+bool Spectrum::guiAdjustSize(uint32_t *width, uint32_t *height) noexcept
 {
     if (mApp == nullptr)
         return false;
@@ -177,7 +187,7 @@ bool Plugin::guiAdjustSize(uint32_t *width, uint32_t *height) noexcept
     return true;
 }
 
-bool Plugin::guiSetSize(uint32_t width, uint32_t height) noexcept
+bool Spectrum::guiSetSize(uint32_t width, uint32_t height) noexcept
 {
     if (mApp == nullptr)
         return false;
@@ -186,12 +196,20 @@ bool Plugin::guiSetSize(uint32_t width, uint32_t height) noexcept
     return true;
 }
 
-bool Plugin::guiGetSize(uint32_t *width, uint32_t *height) noexcept
+bool Spectrum::guiGetSize(uint32_t *width, uint32_t *height) noexcept
 {
     if (mApp == nullptr)
         return false;
 
-    *width  = static_cast<uint32_t>(mApp->logicalWidth());
+    *width = static_cast<uint32_t>(mApp->logicalWidth());
     *height = static_cast<uint32_t>(mApp->logicalHeight());
     return true;
+}
+
+void Spectrum::updateWindowingValues()
+{
+    // Hann window.
+    for (size_t i = 0; i < mWindow.size(); ++i) {
+        mWindow[i] = static_cast<float>(0.5 - std::cos((2.0 * i * M_PI) / (mWindow.size() - 1)) / 2);
+    }
 }
