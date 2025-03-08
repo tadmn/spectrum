@@ -67,7 +67,7 @@ public:
                 if (mag > 0.0)
                 {
                     auto const dB = 20.0 * std::log10(mag);
-                    y = dB / 35.0; // [0,1+]
+                    y = 0.25 + dB / 90.0; // [0,1+]
                     auto const oldY = (mLine.height() - mLine.yAt(i)) / mLine.height(); // [0,1]
 
                     if (y > oldY)
