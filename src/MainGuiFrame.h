@@ -12,6 +12,7 @@ public:
     {
         addChild(mLine);
         setIgnoresMouseEvents(true, false);
+        std::ranges::fill(mPrevMags0to1, 0);
     }
 
     ~MainGuiFrame() override {}
@@ -35,8 +36,8 @@ public:
         constexpr auto kMinFreq = 10.0;
         constexpr auto kMaxFreq = 25'000.0;
 
-        auto const kAttackRate = std::clamp(3.0 * canvas.deltaTime(), 0.0, 1.0);
-        auto const kReleaseRate = std::clamp(0.5 * canvas.deltaTime(), 0.0, 1.0);
+        auto const kAttackRate = std::clamp(4.5 * canvas.deltaTime(), 0.0, 1.0);
+        auto const kReleaseRate = std::clamp(0.75 * canvas.deltaTime(), 0.0, 1.0);
 
         auto const logMinFreq = std::log10(kMinFreq);
         auto const logMaxFreq = std::log10(kMaxFreq);
@@ -67,18 +68,20 @@ public:
                 if (mag > 0.0)
                 {
                     auto const dB = 20.0 * std::log10(mag);
-                    y = 0.25 + dB / 90.0; // [0,1+]
-                    auto const oldY = (mLine.height() - mLine.yAt(i)) / mLine.height(); // [0,1]
-
-                    if (y > oldY)
-                    {
-                        y = kAttackRate * y + (1.0 - kAttackRate) * oldY;
-                    } else
-                    {
-                        y = kReleaseRate * y + (1.0 - kReleaseRate) * oldY;
-                    }
+                    y = 0.25 + dB / 80.0; // [0,1+]
                 }
 
+                auto const oldY = mPrevMags0to1[(uint)i];
+
+                if (y > oldY)
+                {
+                    y = kAttackRate * y + (1.0 - kAttackRate) * oldY;
+                } else
+                {
+                    y = kReleaseRate * y + (1.0 - kReleaseRate) * oldY;
+                }
+
+                mPrevMags0to1[(uint)i] = y;
                 mLine.setYAt((int)i, static_cast<float>((1.0 - y) * mLine.height()));
             }
         }
@@ -90,4 +93,5 @@ public:
 private:
     Spectrum & mPlugin;
     visage::GraphLine mLine;
+    std::array<double, kNumFftBins> mPrevMags0to1;
 };
