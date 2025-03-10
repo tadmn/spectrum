@@ -2,8 +2,10 @@
 #pragma once
 
 #include "Spectrum.h"
+#include "LiveValue.h"
+
+#include <visage/widgets.h>
 #include <visage/graphics.h>
-#include "visage_widgets/graph_line.h"
 
 class Spectrum::MainGuiFrame : public visage::Frame
 {
@@ -33,11 +35,14 @@ public:
 
         canvas.setColor(0xffffffff);
 
-        constexpr auto kMinFreq = 10.0;
-        constexpr auto kMaxFreq = 25'000.0;
+        LIVE_VALUE(kMinFreq, 10);
+        LIVE_VALUE(kMaxFreq, 25'000);
 
-        auto const kAttackRate = std::clamp(4.5 * canvas.deltaTime(), 0.0, 1.0);
-        auto const kReleaseRate = std::clamp(0.75 * canvas.deltaTime(), 0.0, 1.0);
+        LIVE_VALUE(kAttack, 4.5);
+        LIVE_VALUE(kRelease, 0.75);
+
+        auto const kAttackRate = std::clamp(kAttack * canvas.deltaTime(), 0.0, 1.0);
+        auto const kReleaseRate = std::clamp(kRelease * canvas.deltaTime(), 0.0, 1.0);
 
         auto const logMinFreq = std::log10(kMinFreq);
         auto const logMaxFreq = std::log10(kMaxFreq);

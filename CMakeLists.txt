@@ -69,10 +69,13 @@ FetchContent_MakeAvailable(FastFourier)
 FetchContent_MakeAvailable(farbot)
 FetchContent_MakeAvailable(visage)
 
+file(GLOB_RECURSE FONT_TTF_FILES fonts/*.ttf)
+add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FONT_TTF_FILES}")
+
 file(GLOB SOURCE_FILES src/*.cpp src/*.h)
 add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage)
+target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage EmbeddedFontResources)
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/audio")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/farbot-src/include")
