@@ -83,7 +83,7 @@ public:
                         mag *= w;
                     }
 
-                    LIVE_VALUE(kBias, -0.6);
+                    LIVE_VALUE(kBias, -0.6f);
                     LIVE_VALUE(kScale_dB, 90.0);
 
                     auto const dB = 20.0 * std::log10(mag);

@@ -57,6 +57,8 @@ clap_process_status Spectrum::process(const clap_process *process) noexcept
             {
                 RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
                 mFft.forward(mFftInBuffer.getIterator(0).sample, fftOut->data());
+                for (auto & c : *fftOut)
+                    c *= mFft.getNormalizationFactor();
             }
 
             mFifoBuffer.pop(kFftHopSize);
