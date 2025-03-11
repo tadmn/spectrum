@@ -41,9 +41,9 @@ add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage EmbeddedFontResources)
 
 # Header-only library includes
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/audio")
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/farbot-src/include")
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${choc_SOURCE_DIR}/audio")
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${choc_SOURCE_DIR}/platform")
+target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${farbot_SOURCE_DIR}/include")
 
 if(APPLE)
   set_target_properties(${PROJECT_NAME} PROPERTIES
