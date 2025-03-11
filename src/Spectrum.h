@@ -18,7 +18,7 @@ using ClapPlugin =
 
 namespace cb = choc::buffer;
 
-static constexpr uint kFftSize = 1024;
+static constexpr uint kFftSize = 2048;
 static constexpr uint kFftHopSize = 256;
 static constexpr uint kNumFftBins = kFftSize / 2 + 1;
 

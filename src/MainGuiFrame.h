@@ -68,12 +68,26 @@ public:
                 auto const x = (std::log10(freq) - logMinFreq) / (logMaxFreq - logMinFreq);
                 mLine.setXAt((int)i, static_cast<float>(x * mLine.width()));
 
-                auto mag = std::abs(fftOut[(uint)i]);
                 auto y = 0.0;
+
+                double mag = std::abs(fftOut[(uint)i]);
                 if (mag > 0.0)
                 {
+                    // A-weighting
+                    {
+                        const auto f2 = freq * freq;
+                        const auto f4 = f2 * f2;
+                        const auto w = (148'693'636.0 * f4) /
+                            ((f2 + 424.36) * std::sqrt((f2 + 11'599.29) * (f2 + 544'496.41) * (f2 + 148'693'636.0)));
+
+                        mag *= w;
+                    }
+
+                    LIVE_VALUE(kBias, -0.6);
+                    LIVE_VALUE(kScale_dB, 90.0);
+
                     auto const dB = 20.0 * std::log10(mag);
-                    y = 0.25 + dB / 80.0; // [0,1+]
+                    y = kBias + dB / kScale_dB; // [0,1+]
                 }
 
                 auto const oldY = mPrevMags0to1[(uint)i];
