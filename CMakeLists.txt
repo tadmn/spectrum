@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 include(FetchContent)
+include(cmake/CPM.cmake)
 
 project(spectrum VERSION 0.0.0 LANGUAGES C CXX)
 
@@ -22,52 +23,14 @@ if(APPLE)
   option(USE_SANITIZER "Build and link with ASAN" FALSE)
 endif()
 
-option(COPY_AFTER_BUILD "Copy the clap to ~/Library on MACOS" TRUE)
+option(COPY_AFTER_BUILD "Copy the clap to ~/Library on macOS" TRUE)
 
-FetchContent_Declare(clap GIT_REPOSITORY https://github.com/free-audio/clap.git
-  GIT_TAG main
-  GIT_SHALLOW TRUE
-  EXCLUDE_FROM_ALL
-)
-
-FetchContent_Declare(clap_helpers GIT_REPOSITORY https://github.com/free-audio/clap-helpers.git
-  GIT_TAG main
-  GIT_SHALLOW TRUE
-  EXCLUDE_FROM_ALL
-)
-
-FetchContent_Declare(FastFourier GIT_REPOSITORY https://github.com/tadmn/FastFourier.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
-  EXCLUDE_FROM_ALL
-)
-
-FetchContent_Declare(visage GIT_REPOSITORY https://github.com/VitalAudio/visage.git
-  GIT_TAG main
-  GIT_SHALLOW TRUE
-  EXCLUDE_FROM_ALL
-)
-
-# Bit of a hack for header-only libs with no cmake support.
-# See https://stackoverflow.com/questions/79261625/cmake-fetchcontent-with-header-only-project.
-FetchContent_Declare(choc GIT_REPOSITORY https://github.com/Tracktion/choc.git
-  GIT_TAG main
-  GIT_SHALLOW TRUE
-  SOURCE_SUBDIR ""
-)
-
-FetchContent_Declare(farbot GIT_REPOSITORY https://github.com/tadmn/farbot.git
-  GIT_TAG master
-  GIT_SHALLOW TRUE
-  SOURCE_SUBDIR ""
-)
-
-FetchContent_MakeAvailable(clap)
-FetchContent_MakeAvailable(clap_helpers)
-FetchContent_MakeAvailable(choc)
-FetchContent_MakeAvailable(FastFourier)
-FetchContent_MakeAvailable(farbot)
-FetchContent_MakeAvailable(visage)
+CPMAddPackage("gh:free-audio/clap#1.2.6")
+CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
+CPMAddPackage("gh:Tracktion/choc#a054fc326608ffff6eeea5251fb23945b81bb1d7")
+CPMAddPackage("gh:tadmn/farbot#957ddbabe39f82630862ee0748606ca6c0645b6d")
+CPMAddPackage("gh:tadmn/FastFourier#1bb8d8d098e0b887a0a49578c5269acb92900973")
+CPMAddPackage("gh:tadmn/visage#efcbca35a45cde70c1661200aac90a2a37cc19a7")
 
 file(GLOB_RECURSE FONT_TTF_FILES fonts/*.ttf)
 add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FONT_TTF_FILES}")
@@ -76,6 +39,8 @@ file(GLOB SOURCE_FILES src/*.cpp src/*.h)
 add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage EmbeddedFontResources)
+
+# Header-only library includes
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/audio")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/choc-src/platform")
 target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${FETCHCONTENT_BASE_DIR}/farbot-src/include")
