@@ -27,23 +27,19 @@ option(COPY_AFTER_BUILD "Copy the clap to ~/Library on macOS" TRUE)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
 CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
-CPMAddPackage("gh:Tracktion/choc#a054fc326608ffff6eeea5251fb23945b81bb1d7")
-CPMAddPackage("gh:tadmn/farbot#957ddbabe39f82630862ee0748606ca6c0645b6d")
+CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
+CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#1bb8d8d098e0b887a0a49578c5269acb92900973")
 CPMAddPackage("gh:tadmn/visage#efcbca35a45cde70c1661200aac90a2a37cc19a7")
 
+# visage embedded file resources
 file(GLOB_RECURSE FONT_TTF_FILES fonts/*.ttf)
 add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FONT_TTF_FILES}")
 
 file(GLOB SOURCE_FILES src/*.cpp src/*.h)
 add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME} clap clap-helpers FastFourier visage EmbeddedFontResources)
-
-# Header-only library includes
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${choc_SOURCE_DIR}/audio")
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${choc_SOURCE_DIR}/platform")
-target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE "${farbot_SOURCE_DIR}/include")
+target_link_libraries(${PROJECT_NAME} clap clap-helpers choc farbot FastFourier visage EmbeddedFontResources)
 
 if(APPLE)
   set_target_properties(${PROJECT_NAME} PROPERTIES
