@@ -4,45 +4,41 @@
 #include "FifoBuffer.h"
 
 #include <choc_DisableAllWarnings.h>
-#include <clap/helpers/plugin.hh>
 #include <choc_ReenableAllWarnings.h>
-
-#include <FastFourier/FastFourier.h>
-#include <farbot/RealtimeObject.hpp>
 #include <choc_SampleBuffers.h>
-
+#include <clap/helpers/plugin.hh>
+#include <farbot/RealtimeObject.hpp>
+#include <FastFourier/FastFourier.h>
 #include <visage/app.h>
 
-using ClapPlugin =
-    clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
+using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
 
 namespace cb = choc::buffer;
 
-static constexpr uint kFftSize = 2048;
-static constexpr uint kFftHopSize = 256;
-static constexpr uint kNumFftBins = kFftSize / 2 + 1;
+static constexpr int kFftSize = 4096;
+static constexpr int kFftHopSize = 256;
+static constexpr int kNumFftBins = kFftSize / 2 + 1;
 
 using FftComplexOutput = std::array<std::complex<float>, kNumFftBins>;
 using RealtimeObject = farbot::RealtimeObject<FftComplexOutput, farbot::RealtimeObjectOptions::realtimeMutatable>;
 
-class Spectrum : public ClapPlugin
-{
-public:
+class Spectrum : public ClapPlugin {
+  public:
     static clap_plugin_descriptor descriptor;
 
-    explicit Spectrum(const clap_host *host);
+    explicit Spectrum(const clap_host* host);
     ~Spectrum() override;
 
-protected:
+  protected:
     bool activate(double sampleRate, uint32_t minFrameCount, uint32_t maxFrameCount) noexcept override;
     void deactivate() noexcept override;
     void reset() noexcept override;
 
-    clap_process_status process(const clap_process *process) noexcept override;
+    clap_process_status process(const clap_process* process) noexcept override;
 
     bool implementsAudioPorts() const noexcept override { return true; }
     uint32_t audioPortsCount(bool /*isInput*/) const noexcept override { return 1; }
-    bool audioPortsInfo(uint32_t index, bool isInput, clap_audio_port_info *info) const noexcept override;
+    bool audioPortsInfo(uint32_t index, bool isInput, clap_audio_port_info* info) const noexcept override;
 
     bool implementsGui() const noexcept override { return true; }
     bool guiIsApiSupported(const char* api, bool is_floating) noexcept override;
@@ -56,7 +52,7 @@ protected:
     bool guiSetSize(uint32_t width, uint32_t height) noexcept override;
     bool guiGetSize(uint32_t* width, uint32_t* height) noexcept override;
 
-private:
+  private:
     void updateWindowingValues();
 
     std::array<float, kFftSize> mWindow;

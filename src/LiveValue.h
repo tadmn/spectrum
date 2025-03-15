@@ -12,18 +12,17 @@
 #include <atomic>
 #include <string>
 
-class LiveValue
-{
-public:
-    LiveValue(const std::string & name, float initialValue);
+class LiveValue {
+  public:
+    LiveValue(const std::string& name, float initialValue);
 
-    LiveValue(const LiveValue & other) = delete;
-    LiveValue & operator = (const LiveValue & other) = delete;
+    LiveValue(const LiveValue& other) = delete;
+    LiveValue& operator=(const LiveValue& other) = delete;
 
     operator float() const noexcept { return mValue.load(std::memory_order_relaxed); }
-    float    get()   const noexcept { return mValue.load(std::memory_order_relaxed); }
+    float get() const noexcept { return mValue.load(std::memory_order_relaxed); }
 
-private:
+  private:
     std::atomic<float> mValue;
 };
 

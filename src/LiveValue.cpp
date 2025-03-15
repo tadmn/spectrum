@@ -9,16 +9,18 @@
 
 #include "LiveValue.h"
 
+#include "embedded/Fonts.h"
+
 #include <visage/app.h>
 #include <visage/widgets.h>
 
-#include "embedded/Fonts.h"
-
 namespace {
 
-visage::EmbeddedFile getFont(){ return resources::fonts::DroidSansMono_ttf; }
+visage::EmbeddedFile getFont() {
+    return resources::fonts::DroidSansMono_ttf;
+}
 
-visage::ApplicationWindow & getWindow() {
+visage::ApplicationWindow& getWindow() {
     static std::unique_ptr<visage::ApplicationWindow> window;
 
     if (window != nullptr)
@@ -27,7 +29,7 @@ visage::ApplicationWindow & getWindow() {
     window = std::make_unique<visage::ApplicationWindow>();
 
     window->setTitle("Live Values");
-    window->onDraw() = [](visage::Canvas & c) {
+    window->onDraw() = [](visage::Canvas& c) {
         c.setColor(0xffffffff);
         c.fill(0, 0, window->width(), window->height());
     };
@@ -47,18 +49,17 @@ visage::ApplicationWindow & getWindow() {
 
 }
 
-LiveValue::LiveValue(const std::string & name, float initialValue) : mValue(initialValue)
-{
+LiveValue::LiveValue(const std::string& name, float initialValue) : mValue(initialValue) {
     constexpr auto kLabelHeight = 50;
 
     auto label = std::make_unique<visage::Frame>();
-    label->onDraw() = [name, l = label.get()](visage::Canvas & c) {
+    label->onDraw() = [name, l = label.get()](visage::Canvas& c) {
         c.setColor(0xff000000);
-        c.text(name, {28, getFont()}, visage::Font::kBottom, 0, 0, l->width(), l->height());
+        c.text(name, { 28, getFont() }, visage::Font::kBottom, 0, 0, l->width(), l->height());
     };
 
     auto textEditor = std::make_unique<visage::TextEditor>(name);
-    textEditor->setFont({32, getFont()});
+    textEditor->setFont({ 32, getFont() });
     textEditor->setJustification(visage::Font::kCenter);
     textEditor->setText(initialValue);
     textEditor->onTextChange() = [this, te = textEditor.get()] {

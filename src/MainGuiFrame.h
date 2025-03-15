@@ -1,31 +1,25 @@
 
 #pragma once
 
-#include "Spectrum.h"
 #include "LiveValue.h"
+#include "Spectrum.h"
 
-#include <visage/widgets.h>
 #include <visage/graphics.h>
+#include <visage/widgets.h>
 
-class Spectrum::MainGuiFrame : public visage::Frame
-{
-public:
-    MainGuiFrame(Spectrum & p) : mPlugin(p), mLine(kNumFftBins)
-    {
+class Spectrum::MainGuiFrame : public visage::Frame {
+  public:
+    MainGuiFrame(Spectrum& p) : mPlugin(p), mLine(kNumFftBins) {
         addChild(mLine);
         setIgnoresMouseEvents(true, false);
-        std::ranges::fill(mPrevMags0to1, 0);
+        std::ranges::fill(mPrevDbValues, 0);
     }
 
-    ~MainGuiFrame() override {}
+    ~MainGuiFrame() override { }
 
-    void resized() override
-    {
-        mLine.setBounds(0, 0, width(), height());
-    }
+    void resized() override { mLine.setBounds(0, 0, width(), height()); }
 
-    void draw(visage::Canvas &canvas) override
-    {
+    void draw(visage::Canvas& canvas) override {
         FftComplexOutput fftOut;
 
         {
@@ -35,82 +29,79 @@ public:
 
         canvas.setColor(0xffffffff);
 
-        LIVE_VALUE(kMinFreq, 10);
-        LIVE_VALUE(kMaxFreq, 25'000);
+        LIVE_VALUE(kMinFreq, 20);
+        LIVE_VALUE(kMaxFreq, 20'000);
 
         LIVE_VALUE(kAttack, 4.5);
         LIVE_VALUE(kRelease, 0.75);
 
-        auto const kAttackRate = std::clamp(kAttack * canvas.deltaTime(), 0.0, 1.0);
-        auto const kReleaseRate = std::clamp(kRelease * canvas.deltaTime(), 0.0, 1.0);
+        const auto kAttackRate = std::clamp(kAttack * canvas.deltaTime(), 0.0, 1.0);
+        const auto kReleaseRate = std::clamp(kRelease * canvas.deltaTime(), 0.0, 1.0);
 
-        auto const logMinFreq = std::log10(kMinFreq);
-        auto const logMaxFreq = std::log10(kMaxFreq);
+        const auto logMinFreq = std::log10(kMinFreq);
+        const auto logMaxFreq = std::log10(kMaxFreq);
 
-        auto const deltaFreq = mPlugin.sampleRate() / kFftSize;
+        const auto deltaFreq = mPlugin.sampleRate() / kFftSize;
 
-        for (int i = 0; i < (int)kNumFftBins; ++i)
-        {
-            auto const freq = i * deltaFreq;
+        for (int i = 0; i < kNumFftBins; ++i) {
+            const auto freq = i * deltaFreq;
 
-            if (freq < kMinFreq)
-            {
-                mLine.setXAt(i, 0.f);
-                mLine.setYAt(i, mLine.height());
-            }
-            else if (freq > kMaxFreq)
-            {
-                mLine.setXAt(i, mLine.width());
-                mLine.setYAt(i, mLine.height());
-            }
-            else
-            {
-                auto const x = (std::log10(freq) - logMinFreq) / (logMaxFreq - logMinFreq);
-                mLine.setXAt((int)i, static_cast<float>(x * mLine.width()));
+            if (freq <= 0.0) {
+                mLine.setXAt(i, 0);
+                mLine.setYAt(i, mLine.height());  //todo show actual DC value from fft
+            } else {
+                // Logarithmic spacing for x-axis
+                const auto x = (std::log10(freq) - logMinFreq) / (logMaxFreq - logMinFreq);
+                mLine.setXAt(i, x * mLine.width());
 
-                auto y = 0.0;
+                LIVE_VALUE(kMinDbVisible, -100);
+                LIVE_VALUE(kMaxDbVisible, 0);
 
-                double mag = std::abs(fftOut[(uint)i]);
-                if (mag > 0.0)
-                {
-                    // A-weighting
+                // Used primarily for ballistics. This will be the target that the
+                // ballistics use when the magnitude value is less than `kMinDbVisible`
+                LIVE_VALUE(kMinDb, -110);
+
+                double dB = kMinDb;
+                if (double mag = std::abs(fftOut[i]); mag >= std::pow(10.0, kMinDbVisible / 20.0)) {
+                    // This compensates for FFT settings (algorithm, window, size, etc..).
+                    // In the future I'll make a function that auto-calibrates for a given
+                    // center frequency
+                    LIVE_VALUE(kMagNorm, 0.00047);
+                    mag *= kMagNorm;
+
+                    // dB/Octave slope weighting
                     {
-                        const auto f2 = freq * freq;
-                        const auto f4 = f2 * f2;
-                        const auto w = (148'693'636.0 * f4) /
-                            ((f2 + 424.36) * std::sqrt((f2 + 11'599.29) * (f2 + 544'496.41) * (f2 + 148'693'636.0)));
-
+                        LIVE_VALUE(kSlopeDb, 6);
+                        LIVE_VALUE(kCenterFreq, 1'000);
+                        const auto octaves = std::log(freq / kCenterFreq);
+                        const auto w = std::pow(10.0, (octaves * kSlopeDb) / 20.0);
                         mag *= w;
                     }
 
-                    LIVE_VALUE(kBias, -0.6f);
-                    LIVE_VALUE(kScale_dB, 90.0);
-
-                    auto const dB = 20.0 * std::log10(mag);
-                    y = kBias + dB / kScale_dB; // [0,1+]
+                    dB = 20.0 * std::log10(mag);
                 }
 
-                auto const oldY = mPrevMags0to1[(uint)i];
-
-                if (y > oldY)
+                // Calculate ballistics
                 {
-                    y = kAttackRate * y + (1.0 - kAttackRate) * oldY;
-                } else
-                {
-                    y = kReleaseRate * y + (1.0 - kReleaseRate) * oldY;
+                    const auto oldDb = mPrevDbValues[i];
+                    if (dB > oldDb)
+                        dB = kAttackRate * dB + (1.0 - kAttackRate) * oldDb;
+                    else
+                        dB = kReleaseRate * dB + (1.0 - kReleaseRate) * oldDb;
                 }
 
-                mPrevMags0to1[(uint)i] = y;
-                mLine.setYAt((int)i, static_cast<float>((1.0 - y) * mLine.height()));
+                mPrevDbValues[i] = dB;
+
+                const auto y0to1 = dB / kMinDbVisible;
+                mLine.setYAt(i, y0to1 * mLine.height());
             }
         }
 
         redraw();
     }
 
-
-private:
-    Spectrum & mPlugin;
+  private:
+    Spectrum& mPlugin;
     visage::GraphLine mLine;
-    std::array<double, kNumFftBins> mPrevMags0to1;
+    std::array<double, kNumFftBins> mPrevDbValues;
 };

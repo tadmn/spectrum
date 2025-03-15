@@ -1,83 +1,75 @@
 
 #include "Spectrum.h"
+
 #include "MainGuiFrame.h"
 
 #include <choc_DisableAllWarnings.h>
-#include <clap/helpers/plugin.hxx>
 #include <choc_ReenableAllWarnings.h>
+#include <clap/helpers/plugin.hxx>
 
-clap_plugin_descriptor Spectrum::descriptor = {.clap_version = CLAP_VERSION,
-                                               .id = "com.tadmn.spectrum",
-                                               .name = "Spectrum",
-                                               .vendor = "tadmn",
-                                               .url = "",
-                                               .manual_url = "",
-                                               .support_url = "",
-                                               .version = "0.0.0",
-                                               .description = "Spectrum"};
+clap_plugin_descriptor Spectrum::descriptor = { .clap_version = CLAP_VERSION,
+                                                .id = "com.tadmn.spectrum",
+                                                .name = "Spectrum",
+                                                .vendor = "tadmn",
+                                                .url = "",
+                                                .manual_url = "",
+                                                .support_url = "",
+                                                .version = "0.0.0",
+                                                .description = "Spectrum" };
 
-Spectrum::Spectrum(const clap_host *host)
-    : ClapPlugin(&Spectrum::descriptor, host), mFifoBuffer(1, kFftSize), mFft(kFftSize)
-{
-    mFftInBuffer.resize({.numChannels = 1, .numFrames = kFftSize});
+Spectrum::Spectrum(const clap_host* host) :
+    ClapPlugin(&Spectrum::descriptor, host), mFifoBuffer(1, kFftSize), mFft(kFftSize) {
+    mFftInBuffer.resize({ .numChannels = 1, .numFrames = kFftSize });
     updateWindowingValues();
 }
 
 Spectrum::~Spectrum() = default;
 
-bool Spectrum::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept
-{
+bool Spectrum::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept {
     return true;
 }
 
-void Spectrum::deactivate() noexcept
-{
-}
+void Spectrum::deactivate() noexcept { }
 
-void Spectrum::reset() noexcept
-{
+void Spectrum::reset() noexcept {
     mFifoBuffer.clear();
 }
 
-clap_process_status Spectrum::process(const clap_process *process) noexcept
-{
-    auto in = cb::createChannelArrayView(process->audio_inputs->data32, process->audio_inputs->channel_count,
-                                         process->frames_count);
+clap_process_status Spectrum::process(const clap_process* process) noexcept {
+    auto in = cb::createChannelArrayView(process->audio_inputs->data32,
+                                         process->audio_inputs->channel_count, process->frames_count);
 
     while (in.getNumFrames() > 0) {
         in = mFifoBuffer.push(in);
         if (mFifoBuffer.isFull()) {
             // Make a copy of the accumulated samples, so that when we window them we don't affect the overlapping
-            // samples in the next chunk.
+            // samples in the next chunk
             cb::copy(mFftInBuffer, mFifoBuffer.getBuffer());
 
-            // Apply windowing.
+            // Apply windowing
             cb::applyGainPerFrame(mFftInBuffer, [this](auto i) { return mWindow[i]; });
 
             {
                 RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
                 mFft.forward(mFftInBuffer.getIterator(0).sample, fftOut->data());
-                for (auto & c : *fftOut)
-                    c *= mFft.getNormalizationFactor();
             }
 
             mFifoBuffer.pop(kFftHopSize);
         }
     }
 
-    // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling.
+    // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {
-        cb::copy(cb::createChannelArrayView(process->audio_outputs->data32, process->audio_outputs->channel_count,
-                                            process->frames_count),
-                 cb::createChannelArrayView(process->audio_inputs->data32, process->audio_inputs->channel_count,
-                                            process->frames_count));
+        cb::copy(cb::createChannelArrayView(process->audio_outputs->data32,
+                                            process->audio_outputs->channel_count, process->frames_count),
+                 cb::createChannelArrayView(process->audio_inputs->data32,
+                                            process->audio_inputs->channel_count, process->frames_count));
     }
 
     return CLAP_PROCESS_CONTINUE;
 }
 
-bool Spectrum::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_info *info) const noexcept
-{
+bool Spectrum::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_info* info) const noexcept {
     if (index != 0)
         return false;
 
@@ -89,8 +81,7 @@ bool Spectrum::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_
     return true;
 }
 
-bool Spectrum::guiIsApiSupported(char const *api, bool is_floating) noexcept
-{
+bool Spectrum::guiIsApiSupported(char const* api, bool is_floating) noexcept {
     if (is_floating)
         return false;
 
@@ -108,8 +99,7 @@ bool Spectrum::guiIsApiSupported(char const *api, bool is_floating) noexcept
     return false;
 }
 
-bool Spectrum::guiCreate(char const */*api*/, bool is_floating) noexcept
-{
+bool Spectrum::guiCreate(char const* /*api*/, bool is_floating) noexcept {
     if (is_floating)
         return false;
 
@@ -128,7 +118,7 @@ bool Spectrum::guiCreate(char const */*api*/, bool is_floating) noexcept
         _host.guiRequestResize(static_cast<uint32_t>(mApp->logicalWidth()),
                                static_cast<uint32_t>(mApp->logicalHeight()));
 
-        for (auto * child : mApp->children())
+        for (auto* child : mApp->children())
             child->setBounds(0, 0, mApp->width(), mApp->height());
     };
 
@@ -137,8 +127,7 @@ bool Spectrum::guiCreate(char const */*api*/, bool is_floating) noexcept
     return true;
 }
 
-void Spectrum::guiDestroy() noexcept
-{
+void Spectrum::guiDestroy() noexcept {
 #if __linux__
     if (mApp && mApp->window() && _host.canUsePosixFdSupport())
         _host.posixFdSupportUnregister(mApp->window()->posixFd());
@@ -147,8 +136,7 @@ void Spectrum::guiDestroy() noexcept
     mApp->close();
 }
 
-bool Spectrum::guiSetParent(clap_window const *window) noexcept
-{
+bool Spectrum::guiSetParent(clap_window const* window) noexcept {
     if (mApp == nullptr)
         return false;
 
@@ -163,8 +151,7 @@ bool Spectrum::guiSetParent(clap_window const *window) noexcept
     return true;
 }
 
-bool Spectrum::guiGetResizeHints(clap_gui_resize_hints_t *hints) noexcept
-{
+bool Spectrum::guiGetResizeHints(clap_gui_resize_hints_t* hints) noexcept {
     if (mApp == nullptr)
         return false;
 
@@ -174,14 +161,13 @@ bool Spectrum::guiGetResizeHints(clap_gui_resize_hints_t *hints) noexcept
     hints->preserve_aspect_ratio = fixed_aspect_ratio;
 
     if (fixed_aspect_ratio) {
-        hints->aspect_ratio_width  = static_cast<uint32_t>(mApp->height() * mApp->aspectRatio());
+        hints->aspect_ratio_width = static_cast<uint32_t>(mApp->height() * mApp->aspectRatio());
         hints->aspect_ratio_height = static_cast<uint32_t>(mApp->width());
     }
     return true;
 }
 
-bool Spectrum::guiAdjustSize(uint32_t *width, uint32_t *height) noexcept
-{
+bool Spectrum::guiAdjustSize(uint32_t* width, uint32_t* height) noexcept {
     if (mApp == nullptr)
         return false;
 
@@ -189,8 +175,7 @@ bool Spectrum::guiAdjustSize(uint32_t *width, uint32_t *height) noexcept
     return true;
 }
 
-bool Spectrum::guiSetSize(uint32_t width, uint32_t height) noexcept
-{
+bool Spectrum::guiSetSize(uint32_t width, uint32_t height) noexcept {
     if (mApp == nullptr)
         return false;
 
@@ -198,8 +183,7 @@ bool Spectrum::guiSetSize(uint32_t width, uint32_t height) noexcept
     return true;
 }
 
-bool Spectrum::guiGetSize(uint32_t *width, uint32_t *height) noexcept
-{
+bool Spectrum::guiGetSize(uint32_t* width, uint32_t* height) noexcept {
     if (mApp == nullptr)
         return false;
 
@@ -208,10 +192,8 @@ bool Spectrum::guiGetSize(uint32_t *width, uint32_t *height) noexcept
     return true;
 }
 
-void Spectrum::updateWindowingValues()
-{
-    // Hann window.
-    for (size_t i = 0; i < mWindow.size(); ++i) {
+void Spectrum::updateWindowingValues() {
+    // Hann window
+    for (size_t i = 0; i < mWindow.size(); ++i)
         mWindow[i] = static_cast<float>(0.5 - std::cos((2.0 * i * M_PI) / (mWindow.size() - 1)) / 2);
-    }
 }
