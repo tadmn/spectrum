@@ -89,12 +89,18 @@ class Spectrum::MainGuiFrame : public visage::Frame {
             numBinsInDisplayBand[index]++;
         }
 
+        // This allows us to skip over bands that have no bins assigned to them, thus avoiding
+        // gaps in the spectrum
+        int lineIndex = 1;
+
         for (int i = 0; i < kNumDisplayBands; ++i) {
+            if (numBinsInDisplayBand[i] == 0)
+                continue;
+
             auto energy = displayBands[i];
 
-            // Average the energy. Avoid dividing by zero
-            if (const auto numBins = numBinsInDisplayBand[i]; numBins > 0)
-                energy /= numBins;
+            // Average the energy
+            energy /= numBinsInDisplayBand[i];
 
             // Convert to dB
             double dB = kMinDbVisible;
@@ -116,8 +122,15 @@ class Spectrum::MainGuiFrame : public visage::Frame {
 
             const auto xBandWidth = static_cast<double>(mLine.width()) / kNumDisplayBands;
             const auto x = i * xBandWidth + xBandWidth / 2.0;
-            mLine.setXAt(i + 1, x);
-            mLine.setYAt(i + 1, y0to1 * mLine.height());
+            mLine.setXAt(lineIndex, x);
+            mLine.setYAt(lineIndex, y0to1 * mLine.height());
+
+            lineIndex++;
+        }
+
+        for (int i = lineIndex; i < mLine.numPoints(); ++i) {
+            mLine.setXAt(i, mLine.width());
+            mLine.setYAt(i, mLine.height());
         }
 
         redraw();
