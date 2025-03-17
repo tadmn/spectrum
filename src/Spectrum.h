@@ -18,6 +18,8 @@ namespace cb = choc::buffer;
 static constexpr int kFftSize = 4096;
 static constexpr int kFftHopSize = 256;
 static constexpr int kNumFftBins = kFftSize / 2 + 1;
+static constexpr int kNumDisplayBands = 300;
+static constexpr double kMinDbVisible = -100.0;
 
 using FftComplexOutput = std::array<std::complex<float>, kNumFftBins>;
 using RealtimeObject = farbot::RealtimeObject<FftComplexOutput, farbot::RealtimeObjectOptions::realtimeMutatable>;

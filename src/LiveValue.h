@@ -14,16 +14,16 @@
 
 class LiveValue {
   public:
-    LiveValue(const std::string& name, float initialValue);
+    LiveValue(const std::string& name, double initialValue);
 
     LiveValue(const LiveValue& other) = delete;
     LiveValue& operator=(const LiveValue& other) = delete;
 
-    operator float() const noexcept { return mValue.load(std::memory_order_relaxed); }
-    float get() const noexcept { return mValue.load(std::memory_order_relaxed); }
+    operator double() const noexcept { return mValue.load(std::memory_order_relaxed); }
+    double get() const noexcept { return mValue.load(std::memory_order_relaxed); }
 
   private:
-    std::atomic<float> mValue;
+    std::atomic<double> mValue;
 };
 
 #ifndef NDEBUG

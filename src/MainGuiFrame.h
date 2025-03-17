@@ -9,15 +9,23 @@
 
 class Spectrum::MainGuiFrame : public visage::Frame {
   public:
-    MainGuiFrame(Spectrum& p) : mPlugin(p), mLine(kNumFftBins) {
+    MainGuiFrame(Spectrum& p) : mPlugin(p), mLine(kNumDisplayBands + 2) {
         addChild(mLine);
         setIgnoresMouseEvents(true, false);
-        std::ranges::fill(mPrevDbValues, 0);
+        mPrevDbValues.fill(kMinDbVisible);
     }
 
     ~MainGuiFrame() override { }
 
-    void resized() override { mLine.setBounds(0, 0, width(), height()); }
+    void resized() override {
+        mLine.setBounds(0, 0, width(), height());
+
+        // Tether the first and last points to 0
+        mLine.setXAt(0, 0);
+        mLine.setYAt(0, mLine.height());
+        mLine.setXAt(mLine.numPoints() - 1, mLine.width());
+        mLine.setYAt(mLine.numPoints() - 1, mLine.height());
+    }
 
     void draw(visage::Canvas& canvas) override {
         FftComplexOutput fftOut;
@@ -32,69 +40,84 @@ class Spectrum::MainGuiFrame : public visage::Frame {
         LIVE_VALUE(kMinFreq, 20);
         LIVE_VALUE(kMaxFreq, 20'000);
 
-        LIVE_VALUE(kAttack, 4.5);
-        LIVE_VALUE(kRelease, 0.75);
+        LIVE_VALUE(kAttack, 15.0);
+        LIVE_VALUE(kRelease, 0.85);
 
         const auto kAttackRate = std::clamp(kAttack * canvas.deltaTime(), 0.0, 1.0);
         const auto kReleaseRate = std::clamp(kRelease * canvas.deltaTime(), 0.0, 1.0);
 
         const auto logMinFreq = std::log10(kMinFreq);
         const auto logMaxFreq = std::log10(kMaxFreq);
+        const auto logDisplayStep = (logMaxFreq - logMinFreq) / kNumDisplayBands;
 
         const auto deltaFreq = mPlugin.sampleRate() / kFftSize;
 
-        for (int i = 0; i < kNumFftBins; ++i) {
+        std::array<int, kNumDisplayBands> numBinsInDisplayBand = {};
+        std::array<double, kNumDisplayBands> displayBands = {};
+
+        for (int i = 0; i < kNumFftBins; i++) {
             const auto freq = i * deltaFreq;
+            if (freq < kMinFreq || freq > kMaxFreq)
+                continue;
 
-            if (freq <= 0.0) {
-                mLine.setXAt(i, 0);
-                mLine.setYAt(i, mLine.height());  //todo show actual DC value from fft
-            } else {
-                // Logarithmic spacing for x-axis
-                const auto x = (std::log10(freq) - logMinFreq) / (logMaxFreq - logMinFreq);
-                mLine.setXAt(i, x * mLine.width());
+            double mag = std::abs(fftOut[i]);
 
-                LIVE_VALUE(kMinDbVisible, -100);
-                LIVE_VALUE(kMaxDbVisible, 0);
+            // This compensates for FFT settings (algorithm, window, size, etc..).
+            // In the future I'll make a function that auto-calibrates for a given
+            // center frequency
+            LIVE_VALUE(kMagNorm, 0.00047);
+            mag *= kMagNorm;
 
-                // Used primarily for ballistics. This will be the target that the
-                // ballistics use when the magnitude value is less than `kMinDbVisible`
-                LIVE_VALUE(kMinDb, -110);
-
-                double dB = kMinDb;
-                if (double mag = std::abs(fftOut[i]); mag >= std::pow(10.0, kMinDbVisible / 20.0)) {
-                    // This compensates for FFT settings (algorithm, window, size, etc..).
-                    // In the future I'll make a function that auto-calibrates for a given
-                    // center frequency
-                    LIVE_VALUE(kMagNorm, 0.00047);
-                    mag *= kMagNorm;
-
-                    // dB/Octave slope weighting
-                    {
-                        LIVE_VALUE(kSlopeDb, 6);
-                        LIVE_VALUE(kCenterFreq, 1'000);
-                        const auto octaves = std::log(freq / kCenterFreq);
-                        const auto w = std::pow(10.0, (octaves * kSlopeDb) / 20.0);
-                        mag *= w;
-                    }
-
-                    dB = 20.0 * std::log10(mag);
-                }
-
-                // Calculate ballistics
-                {
-                    const auto oldDb = mPrevDbValues[i];
-                    if (dB > oldDb)
-                        dB = kAttackRate * dB + (1.0 - kAttackRate) * oldDb;
-                    else
-                        dB = kReleaseRate * dB + (1.0 - kReleaseRate) * oldDb;
-                }
-
-                mPrevDbValues[i] = dB;
-
-                const auto y0to1 = dB / kMinDbVisible;
-                mLine.setYAt(i, y0to1 * mLine.height());
+            // dB/Octave slope weighting
+            {
+                LIVE_VALUE(kSlopeDb, 6);
+                LIVE_VALUE(kCenterFreq, 1'000);
+                const auto octaves = std::log(freq / kCenterFreq);
+                const auto weight = std::pow(10.0, (octaves * kSlopeDb) / 20.0);
+                mag *= weight;
             }
+
+            // Figure out which band this bin will get added to
+            const auto logFreq = std::log10(freq);
+            auto index = static_cast<int>((logFreq - logMinFreq) / logDisplayStep);
+            assert(index >= 0 && index < kNumDisplayBands);
+            index = std::clamp(index, 0, kNumDisplayBands - 1);
+
+            // Add this bin's energy to the selected band
+            const auto energy = mag * mag;
+            displayBands[index] += energy;
+            numBinsInDisplayBand[index]++;
+        }
+
+        for (int i = 0; i < kNumDisplayBands; ++i) {
+            auto energy = displayBands[i];
+
+            // Average the energy. Avoid dividing by zero
+            if (const auto numBins = numBinsInDisplayBand[i]; numBins > 0)
+                energy /= numBins;
+
+            // Convert to dB
+            double dB = kMinDbVisible;
+            if (energy > 0.0)
+                dB = 10.0 * std::log10(energy);
+
+            // Calculate ballistics
+            {
+                const auto oldDb = mPrevDbValues[i];
+                if (dB > oldDb)
+                    dB = kAttackRate * dB + (1.0 - kAttackRate) * oldDb;
+                else
+                    dB = kReleaseRate * dB + (1.0 - kReleaseRate) * oldDb;
+            }
+
+            mPrevDbValues[i] = dB;
+
+            const auto y0to1 = dB / kMinDbVisible;
+
+            const auto xBandWidth = static_cast<double>(mLine.width()) / kNumDisplayBands;
+            const auto x = i * xBandWidth + xBandWidth / 2.0;
+            mLine.setXAt(i + 1, x);
+            mLine.setYAt(i + 1, y0to1 * mLine.height());
         }
 
         redraw();
@@ -103,5 +126,5 @@ class Spectrum::MainGuiFrame : public visage::Frame {
   private:
     Spectrum& mPlugin;
     visage::GraphLine mLine;
-    std::array<double, kNumFftBins> mPrevDbValues;
+    std::array<double, kNumDisplayBands> mPrevDbValues {};
 };

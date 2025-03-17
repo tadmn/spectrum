@@ -49,7 +49,7 @@ visage::ApplicationWindow& getWindow() {
 
 }
 
-LiveValue::LiveValue(const std::string& name, float initialValue) : mValue(initialValue) {
+LiveValue::LiveValue(const std::string& name, double initialValue) : mValue(initialValue) {
     constexpr auto kLabelHeight = 50;
 
     auto label = std::make_unique<visage::Frame>();
