@@ -23,7 +23,7 @@ if(APPLE)
   option(USE_SANITIZER "Build and link with ASAN" FALSE)
 endif()
 
-option(COPY_AFTER_BUILD "Copy the clap to ~/Library on macOS" TRUE)
+option(COPY_AFTER_BUILD "Copy the CLAP to ~/Library on macOS" TRUE)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
 CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
@@ -82,7 +82,6 @@ if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "
     -Wstrict-aliasing
     -Wuninitialized
     -Wunused-parameter
-    -Wsign-compare
     -Wint-conversion
     -Wconditional-uninitialized
     -Wconstant-conversion
