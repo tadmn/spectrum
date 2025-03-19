@@ -64,6 +64,7 @@ PenaltyExcessCharacter: 2
 PenaltyIndentedWhitespace: 0
 PointerAlignment: Left
 ReflowComments: false
+SeparateDefinitionBlocks: Always
 SortIncludes: CaseInsensitive
 SortUsingDeclarations: false
 SpaceAfterCStyleCast: false

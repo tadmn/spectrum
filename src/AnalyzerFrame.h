@@ -2,21 +2,21 @@
 #pragma once
 
 #include "AnalyzerProcessor.h"
-#include "Spectrum.h"
+#include "SpectrumPlugin.h"
 
 #include <visage/graphics.h>
 #include <visage/widgets.h>
 
-class Spectrum::MainGuiFrame : public visage::Frame {
+class SpectrumPlugin::AnalyzerFrame : public visage::Frame {
   public:
-    MainGuiFrame(Spectrum& p) : mPlugin(p) {
+    AnalyzerFrame(SpectrumPlugin& p) : mPlugin(p) {
         setIgnoresMouseEvents(true, false);
         mAnalyzerProcessor = std::make_unique<AnalyzerProcessor>(kFftSize, 320, p.sampleRate(), 20,
                                                                  20'000, -100, 15.0, 0.85);
         updateLine();
     }
 
-    ~MainGuiFrame() override { }
+    ~AnalyzerFrame() override { }
 
     void resized() override {
         mLine->setBounds(0, 0, width(), height());
@@ -58,7 +58,7 @@ class Spectrum::MainGuiFrame : public visage::Frame {
         addChild(*mLine);
     }
 
-    Spectrum& mPlugin;
+    SpectrumPlugin& mPlugin;
     std::unique_ptr<AnalyzerProcessor> mAnalyzerProcessor;
     std::unique_ptr<visage::GraphLine> mLine;
 };

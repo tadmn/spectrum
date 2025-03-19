@@ -1,5 +1,5 @@
 
-#include "Spectrum.h"
+#include "SpectrumPlugin.h"
 
 namespace {
 
@@ -8,15 +8,15 @@ uint32_t getPluginCount(const clap_plugin_factory* /*f*/) {
 }
 
 const clap_plugin_descriptor* getPluginDescriptor(const clap_plugin_factory* /*f*/, uint32_t /*w*/) {
-    return &Spectrum::descriptor;
+    return &SpectrumPlugin::descriptor;
 }
 
 const clap_plugin* createPlugin(const clap_plugin_factory* /*factory*/, const clap_host* host,
                                 const char* plugin_id) {
-    if (strcmp(plugin_id, Spectrum::descriptor.id) != 0)
+    if (strcmp(plugin_id, SpectrumPlugin::descriptor.id) != 0)
         return nullptr;
 
-    auto p = new Spectrum(host);
+    auto p = new SpectrumPlugin(host);
     return p->clapPlugin();
 }
 

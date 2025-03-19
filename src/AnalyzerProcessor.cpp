@@ -1,14 +1,14 @@
 
 #include "AnalyzerProcessor.h"
+
 #include "LiveValue.h"
 
-AnalyzerProcessor::AnalyzerProcessor(int fftSize, int numBands, double sampleRate,
-                                     double minFrequency, double maxFrequency, double minDb,
-                                     double attack, double release)
-: mMinDb(minDb), mAttack(attack), mRelease(release), mDeltaFrequency(sampleRate / fftSize) {
+AnalyzerProcessor::AnalyzerProcessor(int fftSize, int numBands, double sampleRate, double minFrequency,
+                                     double maxFrequency, double minDb, double attack, double release) :
+    mMinDb(minDb), mAttack(attack), mRelease(release), mDeltaFrequency(sampleRate / fftSize) {
     const auto logMinFreq = std::log10(minFrequency);
     const auto logMaxFreq = std::log10(maxFrequency);
-    const auto logDisplayStep = (logMaxFreq - logMinFreq) / numBands;;
+    const auto logDisplayStep = (logMaxFreq - logMinFreq) / numBands;
     const auto numBins = fftSize / 2 + 1;
 
     mBands.clear();
