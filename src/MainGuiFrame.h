@@ -37,7 +37,6 @@ class Spectrum::MainGuiFrame : public visage::Frame {
         }
 
         mAnalyzerProcessor->process(canvas.deltaTime(), fftOutput);
-        updateLine();
 
         const auto& bands = mAnalyzerProcessor->bands();
         for (int i = 0; i < bands.size(); ++i) {
