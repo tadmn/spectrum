@@ -27,6 +27,7 @@ option(COPY_AFTER_BUILD "Copy the CLAP to ~/Library on macOS" TRUE)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
 CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
+CPMAddPackage("gh:tadmn/tad-bits#4ade15bbd5b23de10f941324125696eb4b803856")
 CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")
@@ -39,7 +40,7 @@ add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FON
 file(GLOB SOURCE_FILES src/*.cpp src/*.h)
 add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME} clap clap-helpers choc farbot FastFourier visage EmbeddedFontResources)
+target_link_libraries(${PROJECT_NAME} clap clap-helpers tad-bits choc farbot FastFourier visage EmbeddedFontResources)
 
 if(APPLE)
   set_target_properties(${PROJECT_NAME} PROPERTIES

@@ -1,18 +1,22 @@
 
 #pragma once
 
+#include "../cmake-build-debug/_deps/bgfx-src/bgfx/include/bgfx/bgfx.h"
 #include "AnalyzerProcessor.h"
 #include "SpectrumPlugin.h"
 
 #include <visage/graphics.h>
 #include <visage/widgets.h>
 
-class SpectrumPlugin::AnalyzerFrame : public visage::Frame {
+class AnalyzerFrame : public visage::Frame {
   public:
-    AnalyzerFrame(SpectrumPlugin& p) : mPlugin(p) {
+    AnalyzerFrame(AnalyzerProcessor& p) : mAnalyzerProcessor(p) {
         setIgnoresMouseEvents(true, false);
-        mAnalyzerProcessor = std::make_unique<AnalyzerProcessor>(kFftSize, 320, p.sampleRate(), 20,
-                                                                 20'000, -100, 15.0, 0.85);
+        mAnalyzerProcessor.onSettingsChanged = [this] {
+            updateLine();
+            resized();
+        };
+
         updateLine();
     }
 
@@ -29,16 +33,9 @@ class SpectrumPlugin::AnalyzerFrame : public visage::Frame {
     }
 
     void draw(visage::Canvas& canvas) override {
-        FftComplexOutput fftOutput;
+        mAnalyzerProcessor.process(canvas.deltaTime());
 
-        {
-            RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> f(mPlugin.mFftComplexOutput);
-            fftOutput = *f;
-        }
-
-        mAnalyzerProcessor->process(canvas.deltaTime(), fftOutput);
-
-        const auto& bands = mAnalyzerProcessor->bands();
+        const auto& bands = mAnalyzerProcessor.bands();
         for (int i = 0; i < bands.size(); ++i) {
             mLine->setXAt(i + 1, bands[i].x0to1 * width());
             mLine->setYAt(i + 1, bands[i].y0to1 * height());
@@ -49,7 +46,7 @@ class SpectrumPlugin::AnalyzerFrame : public visage::Frame {
 
   private:
     void updateLine() {
-        const auto numPoints = mAnalyzerProcessor->bands().size() + 2;
+        const auto numPoints = mAnalyzerProcessor.bands().size() + 2;
         if (mLine != nullptr && mLine->numPoints() == numPoints)
             return;
 
@@ -58,7 +55,7 @@ class SpectrumPlugin::AnalyzerFrame : public visage::Frame {
         addChild(*mLine);
     }
 
-    SpectrumPlugin& mPlugin;
-    std::unique_ptr<AnalyzerProcessor> mAnalyzerProcessor;
+    AnalyzerProcessor& mAnalyzerProcessor;
+
     std::unique_ptr<visage::GraphLine> mLine;
 };

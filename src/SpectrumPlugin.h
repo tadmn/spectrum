@@ -1,26 +1,18 @@
 
 #pragma once
 
-#include "FifoBuffer.h"
+#include "AnalyzerProcessor.h"
 
 #include <choc_DisableAllWarnings.h>
 #include <choc_ReenableAllWarnings.h>
+
 #include <choc_SampleBuffers.h>
 #include <clap/helpers/plugin.hh>
-#include <farbot/RealtimeObject.hpp>
-#include <FastFourier/FastFourier.h>
 #include <visage/app.h>
 
 using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
 
 namespace cb = choc::buffer;
-
-static constexpr int kFftSize = 4096;
-static constexpr int kFftHopSize = 256;
-static constexpr int kNumFftBins = kFftSize / 2 + 1;
-
-using FftComplexOutput = std::array<std::complex<float>, kNumFftBins>;
-using RealtimeObject = farbot::RealtimeObject<FftComplexOutput, farbot::RealtimeObjectOptions::realtimeMutatable>;
 
 class SpectrumPlugin : public ClapPlugin {
   public:
@@ -59,15 +51,7 @@ class SpectrumPlugin : public ClapPlugin {
     bool guiGetSize(uint32_t* width, uint32_t* height) noexcept override;
 
   private:
-    void updateWindowingValues();
-
-    std::array<float, kFftSize> mWindow;
-    FifoBuffer<float> mFifoBuffer;
-    cb::ChannelArrayBuffer<float> mFftInBuffer;
-    FastFourier mFft;
-    RealtimeObject mFftComplexOutput;
+    AnalyzerProcessor mAnalyzerProcessor;
 
     std::unique_ptr<visage::ApplicationWindow> mApp;
-
-    class AnalyzerFrame;
 };

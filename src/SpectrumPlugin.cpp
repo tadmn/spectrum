@@ -6,6 +6,8 @@
 #include <choc_ReenableAllWarnings.h>
 #include <clap/helpers/plugin.hxx>
 
+#include "embedded/Fonts.h"
+
 clap_plugin_descriptor SpectrumPlugin::descriptor = { .clap_version = CLAP_VERSION,
                                                 .id = "com.tadmn.spectrum",
                                                 .name = "Spectrum",
@@ -17,45 +19,25 @@ clap_plugin_descriptor SpectrumPlugin::descriptor = { .clap_version = CLAP_VERSI
                                                 .description = "Spectrum" };
 
 SpectrumPlugin::SpectrumPlugin(const clap_host* host) :
-    ClapPlugin(&SpectrumPlugin::descriptor, host), mFifoBuffer(1, kFftSize), mFft(kFftSize) {
-    mFftInBuffer.resize({ .numChannels = 1, .numFrames = kFftSize });
-    updateWindowingValues();
-}
+    ClapPlugin(&SpectrumPlugin::descriptor, host) { }
 
 SpectrumPlugin::~SpectrumPlugin() = default;
 
-bool SpectrumPlugin::activate(double /*sampleRate*/, uint32_t /*minFrameCount*/, uint32_t /*maxFrameCount*/) noexcept {
+bool SpectrumPlugin::activate(double sampleRate, uint32_t /*minFrameCount*/,
+                              uint32_t /*maxFrameCount*/) noexcept {
+    mAnalyzerProcessor.setSampleRate(sampleRate);
     return true;
 }
 
 void SpectrumPlugin::deactivate() noexcept { }
 
-void SpectrumPlugin::reset() noexcept {
-    mFifoBuffer.clear();
-}
+void SpectrumPlugin::reset() noexcept { }
 
 clap_process_status SpectrumPlugin::process(const clap_process* process) noexcept {
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    while (in.getNumFrames() > 0) {
-        in = mFifoBuffer.push(in);
-        if (mFifoBuffer.isFull()) {
-            // Make a copy of the accumulated samples, so that when we window them we don't affect the overlapping
-            // samples in the next chunk
-            cb::copy(mFftInBuffer, mFifoBuffer.getBuffer());
-
-            // Apply windowing
-            cb::applyGainPerFrame(mFftInBuffer, [this](auto i) { return mWindow[i]; });
-
-            {
-                RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(mFftComplexOutput);
-                mFft.forward(mFftInBuffer.getIterator(0).sample, fftOut->data());
-            }
-
-            mFifoBuffer.pop(kFftHopSize);
-        }
-    }
+    mAnalyzerProcessor.process(in);
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {
@@ -105,6 +87,14 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
     if (mApp != nullptr)
         return true;
 
+    auto te = std::make_unique<visage::TextEditor>();
+    te->setFont({ 32, resources::fonts::DroidSansMono_ttf });
+    te->setJustification(visage::Font::kCenter);
+    te->setText(4096);
+    te->onEnterKey() = [t = te.get(), this] {
+        mAnalyzerProcessor.setFftSize(t->text().toInt());
+    };
+
     mApp = std::make_unique<visage::ApplicationWindow>();
     mApp->setWindowDimensions(50, 50);
 
@@ -113,15 +103,17 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
         canvas.fill(0, 0, mApp->width(), mApp->height());
     };
 
-    mApp->onWindowContentsResized() = [this] {
+    mApp->onWindowContentsResized() = [this, t = te.get()] {
         _host.guiRequestResize(static_cast<uint32_t>(mApp->logicalWidth()),
                                static_cast<uint32_t>(mApp->logicalHeight()));
 
-        for (auto* child : mApp->children())
-            child->setBounds(0, 0, mApp->width(), mApp->height());
+        mApp->children()[0]->setBounds(0, 0, mApp->width(), mApp->height());
+        t->setBounds(0, 0, 150, 100);
     };
 
-    mApp->addChild(std::make_unique<AnalyzerFrame>(*this));
+    mApp->addChild(std::make_unique<AnalyzerFrame>(mAnalyzerProcessor));
+
+    mApp->addChild(std::move(te));
 
     return true;
 }
@@ -191,8 +183,4 @@ bool SpectrumPlugin::guiGetSize(uint32_t* width, uint32_t* height) noexcept {
     return true;
 }
 
-void SpectrumPlugin::updateWindowingValues() {
-    // Hann window
-    for (size_t i = 0; i < mWindow.size(); ++i)
-        mWindow[i] = static_cast<float>(0.5 - std::cos((2.0 * i * M_PI) / (mWindow.size() - 1)) / 2);
-}
+
