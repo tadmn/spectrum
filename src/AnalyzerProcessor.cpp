@@ -22,23 +22,31 @@ void AnalyzerProcessor::setFftSize(int fftSize) {
     update();
 }
 
+void AnalyzerProcessor::setAttackRate(double attackRate) {
+    mAttack.store(attackRate, std::memory_order_relaxed);
+}
+
+void AnalyzerProcessor::setReleaseRate(double releaseRate) {
+    mRelease.store(releaseRate, std::memory_order_relaxed);
+}
+
 void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
     // Is realtime safe as long as no changes are made to the analyzer. In the case that
     // changes are made, this has a small potential to briefly block while the OS notifies
     // the main thread on the unlock call to the mutex
     const std::unique_lock lock(mMutex, std::try_to_lock);
     if (! lock.owns_lock())
-        return;
+        return; // Try to avoid blocking the audio thread as much as possible
 
     while (audio.getNumFrames() > 0) {
         audio = mFifoBuffer->push(audio);
         if (mFifoBuffer->isFull()) {
             // Make a copy of the accumulated samples, so that when we window them we don't affect the overlapping
             // samples in the next chunk
-            choc::buffer::copy(mFftInBuffer, mFifoBuffer->getBuffer());
+            copy(mFftInBuffer, mFifoBuffer->getBuffer());
 
             // Apply windowing
-            choc::buffer::applyGainPerFrame(mFftInBuffer, [this](auto i) { return mWindow[i]; });
+            applyGainPerFrame(mFftInBuffer, [this](auto i) { return mWindow[i]; });
 
             {
                 RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(*mFftComplexOutput);
@@ -54,12 +62,13 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
     std::vector<std::complex<float>> fftOutput;
 
     {
+        // Grab the output of the FFT from the audio thread
         RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> f(*mFftComplexOutput);
         fftOutput = *f;
     }
 
-    const auto kAttackRate = std::clamp(mAttack * deltaTimeSeconds, 0.0, 1.0);
-    const auto kReleaseRate = std::clamp(mRelease * deltaTimeSeconds, 0.0, 1.0);
+    const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
+    const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
 
     const auto deltaFreq = mSampleRate / mFftSize;
 
@@ -77,10 +86,8 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
 
             // dB/Octave slope weighting
             {
-                LIVE_VALUE(kSlopeDb, 6);
-                LIVE_VALUE(kCenterFreq, 1'000);
-                const auto octaves = std::log(freq / kCenterFreq);
-                const auto weight = std::pow(10.0, (octaves * kSlopeDb) / 20.0);
+                const auto octaves = std::log(freq / mWeightingCenterFrequency);
+                const auto weight = std::pow(10.0, (octaves * mWeightingDbPerOctave) / 20.0);
                 mag *= weight;
             }
 
@@ -99,9 +106,9 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
         {
             const auto oldDb = band.dB;
             if (dB > oldDb)
-                dB = kAttackRate * dB + (1.0 - kAttackRate) * oldDb;
+                dB = attack * dB + (1.0 - attack) * oldDb;
             else
-                dB = kReleaseRate * dB + (1.0 - kReleaseRate) * oldDb;
+                dB = release * dB + (1.0 - release) * oldDb;
 
             band.dB = dB;
         }

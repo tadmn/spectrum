@@ -25,6 +25,8 @@ class AnalyzerProcessor {
 
     void setSampleRate(double sampleRate);
     void setFftSize(int fftSize);
+    void setAttackRate(double attackRate);
+    void setReleaseRate(double releaseRate);
 
     void process(choc::buffer::ChannelArrayView<float> audio);
     void process(double deltaTimeSeconds);
@@ -46,8 +48,10 @@ class AnalyzerProcessor {
     double mMaxFrequency = 20'000.0;
     int mNumBands = 320;
     double mMinDb = -100.0;
-    double mAttack = 15.0;
-    double mRelease = 0.85;
+    std::atomic<double> mAttack = 15.0;
+    std::atomic<double> mRelease = 0.85;
+    double mWeightingDbPerOctave = 6.0;
+    double mWeightingCenterFrequency = 1'000.0;
 
     std::vector<float> mWindow;
     std::unique_ptr<FifoBuffer<float>> mFifoBuffer;

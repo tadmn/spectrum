@@ -1,12 +1,10 @@
 
-#include "AnalyzerFrame.h"
 #include "SpectrumPlugin.h"
+#include "MainFrame.h"
 
 #include <choc_DisableAllWarnings.h>
 #include <choc_ReenableAllWarnings.h>
 #include <clap/helpers/plugin.hxx>
-
-#include "embedded/Fonts.h"
 
 clap_plugin_descriptor SpectrumPlugin::descriptor = { .clap_version = CLAP_VERSION,
                                                 .id = "com.tadmn.spectrum",
@@ -87,14 +85,6 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
     if (mApp != nullptr)
         return true;
 
-    auto te = std::make_unique<visage::TextEditor>();
-    te->setFont({ 32, resources::fonts::DroidSansMono_ttf });
-    te->setJustification(visage::Font::kCenter);
-    te->setText(4096);
-    te->onEnterKey() = [t = te.get(), this] {
-        mAnalyzerProcessor.setFftSize(t->text().toInt());
-    };
-
     mApp = std::make_unique<visage::ApplicationWindow>();
     mApp->setWindowDimensions(50, 50);
 
@@ -103,17 +93,14 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
         canvas.fill(0, 0, mApp->width(), mApp->height());
     };
 
-    mApp->onWindowContentsResized() = [this, t = te.get()] {
+    mApp->onWindowContentsResized() = [this] {
         _host.guiRequestResize(static_cast<uint32_t>(mApp->logicalWidth()),
                                static_cast<uint32_t>(mApp->logicalHeight()));
 
         mApp->children()[0]->setBounds(0, 0, mApp->width(), mApp->height());
-        t->setBounds(0, 0, 150, 100);
     };
 
-    mApp->addChild(std::make_unique<AnalyzerFrame>(mAnalyzerProcessor));
-
-    mApp->addChild(std::move(te));
+    mApp->addChild(std::make_unique<MainFrame>(mAnalyzerProcessor));
 
     return true;
 }
@@ -182,5 +169,3 @@ bool SpectrumPlugin::guiGetSize(uint32_t* width, uint32_t* height) noexcept {
     *height = static_cast<uint32_t>(mApp->logicalHeight());
     return true;
 }
-
-

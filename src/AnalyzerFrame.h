@@ -1,9 +1,7 @@
 
 #pragma once
 
-#include "../cmake-build-debug/_deps/bgfx-src/bgfx/include/bgfx/bgfx.h"
 #include "AnalyzerProcessor.h"
-#include "SpectrumPlugin.h"
 
 #include <visage/graphics.h>
 #include <visage/widgets.h>
@@ -51,6 +49,8 @@ class AnalyzerFrame : public visage::Frame {
             return;
 
         mLine = std::make_unique<visage::GraphLine>(numPoints);
+        mLine->setFill(true);
+        mLine->setFillCenter(visage::GraphLine::kBottom);
         mLine->setBounds(0, 0, width(), height());
         addChild(*mLine);
     }
