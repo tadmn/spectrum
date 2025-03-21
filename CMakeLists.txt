@@ -34,13 +34,21 @@ CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")
 CPMAddPackage("gh:tadmn/visage#efcbca35a45cde70c1661200aac90a2a37cc19a7")
 
 # Visage embedded file resources
-file(GLOB_RECURSE FONT_TTF_FILES fonts/*.ttf)
-add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FONT_TTF_FILES}")
+file(GLOB_RECURSE FONT_FILES fonts/*.ttf)
+add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FONT_FILES}")
+
+file(GLOB_RECURSE ICON_FILES icons/*.svg)
+add_embedded_resources(EmbeddedIconResources "Icons.h" "resources::icons" "${ICON_FILES}")
 
 file(GLOB SOURCE_FILES src/*.cpp src/*.h)
 add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME} clap clap-helpers tad-bits choc farbot FastFourier visage EmbeddedFontResources)
+target_link_libraries(${PROJECT_NAME}
+  clap clap-helpers
+  tad-bits
+  choc farbot FastFourier
+  visage EmbeddedFontResources EmbeddedIconResources
+)
 
 if(APPLE)
   set_target_properties(${PROJECT_NAME} PROPERTIES

@@ -21,7 +21,7 @@ class AnalyzerFrame : public visage::Frame {
     ~AnalyzerFrame() override { }
 
     void resized() override {
-        mLine->setBounds(0, 0, width(), height());
+        mLine->setBounds(bounds());
 
         // Tether the first and last points to bottom left and bottom right corners
         mLine->setXAt(0, 0);

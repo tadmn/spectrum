@@ -104,6 +104,7 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
 
         // Calculate ballistics
         {
+            //todo denormals?
             const auto oldDb = band.dB;
             if (dB > oldDb)
                 dB = attack * dB + (1.0 - attack) * oldDb;

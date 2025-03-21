@@ -3,6 +3,7 @@
 
 #include "AnalyzerFrame.h"
 #include "embedded/Fonts.h"
+#include "embedded/Icons.h"
 
 #include <visage/widgets.h>
 
@@ -31,7 +32,7 @@ class PaletteColorWindow : public visage::ApplicationWindow {
 class MainFrame : public visage::Frame {
   public:
     MainFrame(AnalyzerProcessor& p) :
-        mAnalyzer(p), mButton("Settings", { 28, resources::fonts::DroidSansMono_ttf }) {
+        mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size) {
         mPalette.initWithDefaults();
         setPalette(&mPalette);
 
@@ -51,15 +52,15 @@ class MainFrame : public visage::Frame {
     ~MainFrame() override { }
 
     void resized() override {
-        mButton.setBounds(0, 0, 120, 50);
-        mAnalyzer.setBounds(0, 0, width(), height());
+        mButton.setBounds(15, 15, 65, 65);
+        mAnalyzer.setBounds(bounds());
     }
 
   private:
     visage::Palette mPalette;
 
     AnalyzerFrame mAnalyzer;
-    visage::ToggleTextButton mButton;
+    visage::ToggleIconButton mButton;
 
     std::unique_ptr<PaletteColorWindow> mPaletteColorWindow;
 };
