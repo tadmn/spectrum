@@ -8,6 +8,7 @@ class FifoBuffer {
   public:
     FifoBuffer(int numChannels, int numFrames) : mBuffer(numChannels, numFrames) { clear(); }
 
+    int size() const noexcept { return mSize; }
     int freeSpace() const noexcept { return mBuffer.getNumFrames() - mSize; }
     bool isFull() const noexcept { return freeSpace() == 0; }
     int capacity() const noexcept { return mBuffer.getNumFrames(); }

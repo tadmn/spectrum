@@ -2,6 +2,7 @@
 #pragma once
 
 #include "AnalyzerFrame.h"
+#include "SettingsFrame.h"
 #include "embedded/Fonts.h"
 #include "embedded/Icons.h"
 
@@ -32,28 +33,32 @@ class PaletteColorWindow : public visage::ApplicationWindow {
 class MainFrame : public visage::Frame {
   public:
     MainFrame(AnalyzerProcessor& p) :
-        mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size) {
+        mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size),
+        mSettings(p) {
         mPalette.initWithDefaults();
         setPalette(&mPalette);
 
         addChild(mAnalyzer);
 
-        mButton.onToggle() = [this](visage::Button*, bool) {
-            if (mPaletteColorWindow == nullptr) {
-                mPaletteColorWindow = std::make_unique<PaletteColorWindow>(mPalette);
-            }
-
-            mPaletteColorWindow->show(500, 500);
+        mButton.onToggle() = [this](visage::Button*, bool on) {
+            mSettings.setVisible(on);
+            resized();
         };
 
+        addChild(mSettings, false);
         addChild(mButton);
     }
 
     ~MainFrame() override { }
 
     void resized() override {
-        mButton.setBounds(15, 15, 65, 65);
-        mAnalyzer.setBounds(bounds());
+        if (mSettings.isVisible())
+            mSettings.setBounds(0, 0, width(), 100);
+        else
+            mSettings.setBounds(0, 0, 0, 0);
+
+        mButton.setBounds(15, mSettings.bottom() + 15, 65, 65);
+        mAnalyzer.setBounds(0, mSettings.bottom(), width(), height() - mSettings.bottom());
     }
 
   private:
@@ -62,5 +67,5 @@ class MainFrame : public visage::Frame {
     AnalyzerFrame mAnalyzer;
     visage::ToggleIconButton mButton;
 
-    std::unique_ptr<PaletteColorWindow> mPaletteColorWindow;
+    SettingsFrame mSettings;
 };

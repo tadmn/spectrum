@@ -7,27 +7,46 @@
 #include <numeric>
 
 AnalyzerProcessor::AnalyzerProcessor() {
-    update();
+    updateBands();
 }
 
 void AnalyzerProcessor::setSampleRate(double sampleRate) {
-    const std::scoped_lock lock(mMutex);
-    mSampleRate = sampleRate;
-    update();
+    {
+        const std::scoped_lock lock(mMutex);
+        mSampleRate = sampleRate;
+        updateBands();
+    }
+
+    parameterChanged();
 }
 
 void AnalyzerProcessor::setFftSize(int fftSize) {
-    const std::scoped_lock lock(mMutex);
-    mFftSize = fftSize;
-    update();
+    fftSize = std::max(tb::closestPowerOf2(fftSize), 2);
+
+    {
+        const std::scoped_lock lock(mMutex);
+        mFftSize = fftSize;
+        mFftHopSize = clampFftHopSize(mFftHopSize);
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
+void AnalyzerProcessor::setFftHopSize(int hopSize) {
+    hopSize = clampFftHopSize(hopSize);
+    mFftHopSize.store(hopSize, std::memory_order_relaxed);
+    parameterChanged();
 }
 
 void AnalyzerProcessor::setAttackRate(double attackRate) {
     mAttack.store(attackRate, std::memory_order_relaxed);
+    parameterChanged();
 }
 
 void AnalyzerProcessor::setReleaseRate(double releaseRate) {
     mRelease.store(releaseRate, std::memory_order_relaxed);
+    parameterChanged();
 }
 
 void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
@@ -53,7 +72,7 @@ void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
                 mFft->forward(mFftInBuffer.getIterator(0).sample, fftOut->data());
             }
 
-            mFifoBuffer->pop(mFftHopSize);
+            mFifoBuffer->pop(mFftHopSize.load(std::memory_order_relaxed));
         }
     }
 }
@@ -125,7 +144,7 @@ void AnalyzerProcessor::reset() {
         band.dB = mMinDb;
 }
 
-void AnalyzerProcessor::update() {
+void AnalyzerProcessor::updateBands() {
     // Hann window
     mWindow.resize(mFftSize);
     for (size_t i = 0; i < mWindow.size(); ++i)
@@ -182,6 +201,15 @@ void AnalyzerProcessor::update() {
 
     reset();
 
-    if (onSettingsChanged)
-        onSettingsChanged();
+    if (onBandsChanged)
+        onBandsChanged();
+}
+
+void AnalyzerProcessor::parameterChanged() const {
+    if (onParametersChanged)
+        onParametersChanged();
+}
+
+int AnalyzerProcessor::clampFftHopSize(int inHopSize) const {
+    return std::clamp(inHopSize, 1, mFftSize);
 }

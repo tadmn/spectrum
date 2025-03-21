@@ -10,7 +10,7 @@ class AnalyzerFrame : public visage::Frame {
   public:
     AnalyzerFrame(AnalyzerProcessor& p) : mAnalyzerProcessor(p) {
         setIgnoresMouseEvents(true, false);
-        mAnalyzerProcessor.onSettingsChanged = [this] {
+        mAnalyzerProcessor.onBandsChanged = [this] {
             updateLine();
             resized();
         };
