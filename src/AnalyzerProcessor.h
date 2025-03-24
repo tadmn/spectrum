@@ -1,9 +1,7 @@
 
 #pragma once
 
-#include "FifoBuffer.h"
-
-#include <choc_SampleBuffers.h>
+#include <tb_FifoBuffer.h>
 #include <farbot/RealtimeObject.hpp>
 #include <FastFourier/FastFourier.h>
 
@@ -87,7 +85,7 @@ class AnalyzerProcessor {
     std::atomic<double> mMinDb = -100.0;
 
     std::vector<float> mWindow;
-    std::unique_ptr<FifoBuffer<float>> mFifoBuffer;
+    std::unique_ptr<tb::FifoBuffer<float>> mFifoBuffer;
     choc::buffer::ChannelArrayBuffer<float> mFftInBuffer;
     std::unique_ptr<FastFourier> mFft;
     std::unique_ptr<RealtimeObject> mFftComplexOutput;
