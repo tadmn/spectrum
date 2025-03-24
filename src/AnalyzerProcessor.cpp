@@ -3,6 +3,7 @@
 #include "LiveValue.h"
 
 #include <tb_Math.h>
+#include <tb_Windowing.h>
 
 #include <numeric>
 
@@ -208,11 +209,7 @@ void AnalyzerProcessor::reset() {
 }
 
 void AnalyzerProcessor::updateBands() {
-    // Hann window
-    mWindow.resize(mFftSize);
-    for (size_t i = 0; i < mWindow.size(); ++i)
-        mWindow[i] = 0.5 - std::cos((2.0 * i * M_PI) / (mWindow.size() - 1)) / 2;
-
+    mWindow = tb::window(tb::Window::Hann, mFftSize);
     mFifoBuffer = std::make_unique<tb::FifoBuffer<float>>(1, mFftSize);
     mFftInBuffer.resize({ .numChannels = 1, .numFrames = static_cast<uint>(mFftSize) });
     mFft = std::make_unique<FastFourier>(mFftSize);

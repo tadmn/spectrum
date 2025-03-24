@@ -69,7 +69,7 @@ class AnalyzerProcessor {
                                                   farbot::RealtimeObjectOptions::realtimeMutatable>;
 
     // "Non-realtime" parameters (i.e. they require a more hefty internal update, with buffers & the
-    // band vector being resized, etc)
+    // band vector being resized, etc.)
     double mSampleRate = 44'100.0;
     int mFftSize = 2048;
     double mMinFrequency = 15.0;
