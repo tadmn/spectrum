@@ -2,8 +2,6 @@
 #include "SpectrumPlugin.h"
 #include "MainFrame.h"
 
-#include <choc_DisableAllWarnings.h>
-#include <choc_ReenableAllWarnings.h>
 #include <clap/helpers/plugin.hxx>
 
 clap_plugin_descriptor SpectrumPlugin::descriptor = { .clap_version = CLAP_VERSION,

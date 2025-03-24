@@ -10,6 +10,16 @@ AnalyzerProcessor::AnalyzerProcessor() {
     updateBands();
 }
 
+void AnalyzerProcessor::setTargetNumBands(int targetNumberOfBands) {
+    {
+        const std::scoped_lock lock(mMutex);
+        mTargetNumBands = targetNumberOfBands;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
 void AnalyzerProcessor::setSampleRate(double sampleRate) {
     {
         const std::scoped_lock lock(mMutex);
@@ -33,6 +43,30 @@ void AnalyzerProcessor::setFftSize(int fftSize) {
     parameterChanged();
 }
 
+void AnalyzerProcessor::setMinFrequency(double minFreq) {
+    minFreq = std::max(minFreq, 0.0);
+
+    {
+        const std::scoped_lock lock(mMutex);
+        mMinFrequency = minFreq;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
+void AnalyzerProcessor::setMaxFrequency(double maxFreq) {
+    maxFreq = std::max(maxFreq, 0.0);
+
+    {
+        const std::scoped_lock lock(mMutex);
+        mMaxFrequency = maxFreq;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
 void AnalyzerProcessor::setFftHopSize(int hopSize) {
     hopSize = clampFftHopSize(hopSize);
     mFftHopSize.store(hopSize, std::memory_order_relaxed);
@@ -49,13 +83,36 @@ void AnalyzerProcessor::setReleaseRate(double releaseRate) {
     parameterChanged();
 }
 
+void AnalyzerProcessor::setWeightingDbPerOctave(double dbPerOctave) {
+    mWeightingDbPerOctave.store(dbPerOctave, std::memory_order_relaxed);
+    parameterChanged();
+}
+
+double AnalyzerProcessor::weightingDbPerOctave() const noexcept {
+    return mWeightingDbPerOctave.load(std::memory_order_relaxed);
+}
+
+void AnalyzerProcessor::setWeightingCenterFrequency(double centerFrequency) {
+    mWeightingCenterFrequency.store(centerFrequency, std::memory_order_relaxed);
+    parameterChanged();
+}
+
+double AnalyzerProcessor::weightingCenterFrequency() const noexcept {
+    return mWeightingCenterFrequency.load(std::memory_order_relaxed);
+}
+
+void AnalyzerProcessor::setMinDb(double minDb) {
+    mMinDb.store(minDb, std::memory_order_relaxed);
+    parameterChanged();
+}
+
 void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
     // Is realtime safe as long as no changes are made to the analyzer. In the case that
     // changes are made, this has a small potential to briefly block while the OS notifies
     // the main thread on the unlock call to the mutex
     const std::unique_lock lock(mMutex, std::try_to_lock);
-    if (! lock.owns_lock())
-        return; // Try to avoid blocking the audio thread as much as possible
+    if (!lock.owns_lock())
+        return;  // Try to avoid blocking the audio thread as much as possible
 
     while (audio.getNumFrames() > 0) {
         audio = mFifoBuffer->push(audio);
@@ -78,6 +135,16 @@ void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
 }
 
 void AnalyzerProcessor::process(double deltaTimeSeconds) {
+    const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
+    const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
+
+    const auto weightingCenterFreq = mWeightingCenterFrequency.load(std::memory_order_relaxed);
+    const auto weightingDbPerOctave = mWeightingDbPerOctave.load(std::memory_order_relaxed);
+
+    const auto minDb = mMinDb.load(std::memory_order_relaxed);
+
+    const auto deltaFreq = mSampleRate / mFftSize;
+
     std::vector<std::complex<float>> fftOutput;
 
     {
@@ -85,11 +152,6 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
         RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> f(*mFftComplexOutput);
         fftOutput = *f;
     }
-
-    const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
-    const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
-
-    const auto deltaFreq = mSampleRate / mFftSize;
 
     for (auto& band : mBands) {
         double bandEnergy = 0.0;
@@ -100,13 +162,13 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
             // This compensates for FFT settings (algorithm, window, size, etc..).
             // In the future I'll make a function that auto-calibrates for a given
             // center frequency
-            LIVE_VALUE(kMagNorm, 0.00047);
+            LIVE_VALUE(kMagNorm, 0.00104);
             mag *= kMagNorm;
 
             // dB/Octave slope weighting
             {
-                const auto octaves = std::log(freq / mWeightingCenterFrequency);
-                const auto weight = std::pow(10.0, (octaves * mWeightingDbPerOctave) / 20.0);
+                const auto octaves = std::log(freq / weightingCenterFreq);
+                const auto weight = std::pow(10.0, (octaves * weightingDbPerOctave) / 20.0);
                 mag *= weight;
             }
 
@@ -116,8 +178,8 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
 
         bandEnergy /= band.bins.size();  // Average the energy in the band
 
-        // Convert to dB
-        double dB = mMinDb;
+        // Convert energy to dB
+        double dB = minDb;
         if (bandEnergy > 0.0)
             dB = 10.0 * std::log10(bandEnergy);
 
@@ -133,15 +195,16 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
             band.dB = dB;
         }
 
-        band.y0to1 = dB / mMinDb;
+        band.y0to1 = dB / minDb;
     }
 }
 
 void AnalyzerProcessor::reset() {
     mFifoBuffer->clear();
 
+    const auto minDb = mMinDb.load(std::memory_order_relaxed);
     for (auto& band : mBands)
-        band.dB = mMinDb;
+        band.dB = minDb;
 }
 
 void AnalyzerProcessor::updateBands() {
@@ -157,11 +220,11 @@ void AnalyzerProcessor::updateBands() {
 
     const auto logMinFreq = std::log10(mMinFrequency);
     const auto logMaxFreq = std::log10(mMaxFrequency);
-    const auto logDisplayStep = (logMaxFreq - logMinFreq) / mNumBands;
+    const auto logDisplayStep = (logMaxFreq - logMinFreq) / mTargetNumBands;
     const auto numBins = mFftSize / 2 + 1;
 
     mBands.clear();
-    mBands.resize(mNumBands);
+    mBands.resize(mTargetNumBands);
 
     const auto deltaFreq = mSampleRate / mFftSize;
 
@@ -172,8 +235,8 @@ void AnalyzerProcessor::updateBands() {
             continue;
 
         auto bandIndex = static_cast<int>((std::log10(freq) - logMinFreq) / logDisplayStep);
-        assert(bandIndex >= 0 && bandIndex < mNumBands);
-        bandIndex = std::clamp(bandIndex, 0, mNumBands - 1);
+        assert(bandIndex >= 0 && bandIndex < mTargetNumBands);
+        bandIndex = std::clamp(bandIndex, 0, mTargetNumBands - 1);
 
         mBands[bandIndex].bins.push_back(i);
     }
@@ -188,13 +251,13 @@ void AnalyzerProcessor::updateBands() {
             mBands[i].x0to1 = tb::to0to1(std::log10(freq), logMinFreq, logMaxFreq);
         } else if (numBinsInBand > 1) {
             // Use the center position of the band
-            const auto w = (1.0 / mNumBands);
+            const auto w = (1.0 / mTargetNumBands);
             const auto x0to1 = i * w + w * 0.5;
             mBands[i].x0to1 = x0to1;
         }
     }
 
-    // Now remove all the bands that don't have any bins assigned to them
+    // Now remove all the bands that don't have any bins assigned to them so we don't have gaps
     mBands.erase(std::remove_if(mBands.begin(), mBands.end(),
                                 [](const Band& band) { return band.bins.empty(); }),
                  mBands.end());
