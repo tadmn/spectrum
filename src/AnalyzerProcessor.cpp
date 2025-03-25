@@ -68,6 +68,34 @@ void AnalyzerProcessor::setMaxFrequency(double maxFreq) {
     parameterChanged();
 }
 
+void AnalyzerProcessor::setWeightingDbPerOctave(double dbPerOctave) {
+    {
+        std::scoped_lock lock(mMutex);
+        mWeightingDbPerOctave = dbPerOctave;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
+double AnalyzerProcessor::weightingDbPerOctave() const noexcept {
+    return mWeightingDbPerOctave;
+}
+
+void AnalyzerProcessor::setWeightingCenterFrequency(double centerFrequency) {
+    {
+        std::scoped_lock lock(mMutex);
+        mWeightingCenterFrequency = centerFrequency;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
+double AnalyzerProcessor::weightingCenterFrequency() const noexcept {
+    return mWeightingCenterFrequency;
+}
+
 void AnalyzerProcessor::setFftHopSize(int hopSize) {
     hopSize = clampFftHopSize(hopSize);
     mFftHopSize.store(hopSize, std::memory_order_relaxed);
@@ -82,24 +110,6 @@ void AnalyzerProcessor::setAttackRate(double attackRate) {
 void AnalyzerProcessor::setReleaseRate(double releaseRate) {
     mRelease.store(releaseRate, std::memory_order_relaxed);
     parameterChanged();
-}
-
-void AnalyzerProcessor::setWeightingDbPerOctave(double dbPerOctave) {
-    mWeightingDbPerOctave.store(dbPerOctave, std::memory_order_relaxed);
-    parameterChanged();
-}
-
-double AnalyzerProcessor::weightingDbPerOctave() const noexcept {
-    return mWeightingDbPerOctave.load(std::memory_order_relaxed);
-}
-
-void AnalyzerProcessor::setWeightingCenterFrequency(double centerFrequency) {
-    mWeightingCenterFrequency.store(centerFrequency, std::memory_order_relaxed);
-    parameterChanged();
-}
-
-double AnalyzerProcessor::weightingCenterFrequency() const noexcept {
-    return mWeightingCenterFrequency.load(std::memory_order_relaxed);
 }
 
 void AnalyzerProcessor::setMinDb(double minDb) {
@@ -139,12 +149,7 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
     const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
     const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
 
-    const auto weightingCenterFreq = mWeightingCenterFrequency.load(std::memory_order_relaxed);
-    const auto weightingDbPerOctave = mWeightingDbPerOctave.load(std::memory_order_relaxed);
-
     const auto minDb = mMinDb.load(std::memory_order_relaxed);
-
-    const auto deltaFreq = mSampleRate / mFftSize;
 
     std::vector<std::complex<float>> fftOutput;
 
@@ -157,21 +162,10 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
     for (auto& band : mBands) {
         double bandEnergy = 0.0;
         for (auto bin : band.bins) {
-            const auto freq = bin * deltaFreq;
             double mag = std::abs(fftOutput[bin]);
 
-            // This compensates for FFT settings (algorithm, window, size, etc..).
-            // In the future I'll make a function that auto-calibrates for a given
-            // center frequency
-            LIVE_VALUE(kMagNorm, 0.00104);
-            mag *= kMagNorm;
-
-            // dB/Octave slope weighting
-            {
-                const auto octaves = std::log(freq / weightingCenterFreq);
-                const auto weight = std::pow(10.0, (octaves * weightingDbPerOctave) / 20.0);
-                mag *= weight;
-            }
+            // Includes dB/octave slope & FFT normalization factors
+            mag *= mBinWeights[bin];
 
             const auto binEnergy = mag * mag;
             bandEnergy += binEnergy;
@@ -209,19 +203,49 @@ void AnalyzerProcessor::reset() {
 }
 
 void AnalyzerProcessor::updateBands() {
+    const auto numBins = mFftSize / 2 + 1;
+
     mWindow = tb::window(tb::Window::Hann, mFftSize);
     mFifoBuffer = std::make_unique<tb::FifoBuffer<float>>(1, mFftSize);
     mFftInBuffer.resize({ .numChannels = 1, .numFrames = static_cast<uint>(mFftSize) });
     mFft = std::make_unique<FastFourier>(mFftSize);
-    mFftComplexOutput = std::make_unique<RealtimeObject>(std::vector<std::complex<float>>(mFftSize / 2 + 1));
+    mFftComplexOutput = std::make_unique<RealtimeObject>(std::vector<std::complex<float>>(numBins));
+
+    // Calculate the normalization factor. This is based on such variables such as FFT
+    // algorithm, samplerate, windowing functions, etc.
+    double normalizationFactor = 1.0;
+
+    {
+        // First generate a sinusoid at the weighting center frequency
+        std::vector<float> signal(mFftSize);
+        for (int i = 0; i < signal.size(); ++i) {
+            auto sample = std::sin(2 * M_PI * mWeightingCenterFrequency * (i / mSampleRate));;
+            sample *= mWindow[i]; // Make sure to apply window as that can affect normalization
+            signal[i] = sample;
+        }
+
+        // Run the FFT and then extract the peak magnitude
+        std::vector<std::complex<float>> fftOut(numBins);
+        mFft->forward(signal.data(), fftOut.data());
+        double maxMag = 0.0;
+        for (auto v : fftOut) {
+            const auto mag = std::abs(v);
+            if (mag > maxMag)
+                maxMag = mag;
+        }
+
+        normalizationFactor = 1.0 / maxMag;
+    }
 
     const auto logMinFreq = std::log10(mMinFrequency);
     const auto logMaxFreq = std::log10(mMaxFrequency);
     const auto logDisplayStep = (logMaxFreq - logMinFreq) / mTargetNumBands;
-    const auto numBins = mFftSize / 2 + 1;
 
     mBands.clear();
     mBands.resize(mTargetNumBands);
+
+    mBinWeights.clear();
+    mBinWeights.resize(numBins);
 
     const auto deltaFreq = mSampleRate / mFftSize;
 
@@ -236,6 +260,14 @@ void AnalyzerProcessor::updateBands() {
         bandIndex = std::clamp(bandIndex, 0, mTargetNumBands - 1);
 
         mBands[bandIndex].bins.push_back(i);
+
+        // Calculate dB/octave slope weighting
+        const auto octaves = std::log(freq / mWeightingCenterFrequency);
+        const auto weight = std::pow(10.0, (octaves * mWeightingDbPerOctave) / 20.0);
+
+        // Assign the value to our weights buffer. Make sure to also include the FFT
+        // normalization factor we calculated earlier.
+        mBinWeights[i] = weight * normalizationFactor;
     }
 
     // Now update the x positions for each band. Ignore bands that don't have any bins assigned

@@ -37,6 +37,12 @@ class AnalyzerProcessor {
     void setMaxFrequency(double maxFreq);
     double maxFrequency() const noexcept { return mMaxFrequency; }
 
+    void setWeightingDbPerOctave(double dbPerOctave);
+    double weightingDbPerOctave() const noexcept;
+
+    void setWeightingCenterFrequency(double centerFrequency);
+    double weightingCenterFrequency() const noexcept;
+
     void setFftHopSize(int hopSize);
     int fftHopSize() const noexcept { return mFftHopSize.load(std::memory_order_relaxed); }
 
@@ -45,12 +51,6 @@ class AnalyzerProcessor {
 
     void setReleaseRate(double releaseRate);
     double releaseRate() const noexcept { return mRelease.load(std::memory_order_relaxed); }
-
-    void setWeightingDbPerOctave(double dbPerOctave);
-    double weightingDbPerOctave() const noexcept;
-
-    void setWeightingCenterFrequency(double centerFrequency);
-    double weightingCenterFrequency() const noexcept;
 
     void setMinDb(double minDb);
     double minDb() const noexcept { return mMinDb.load(std::memory_order_relaxed); }
@@ -75,13 +75,13 @@ class AnalyzerProcessor {
     double mMinFrequency = 15.0;
     double mMaxFrequency = 22'000.0;
     int mTargetNumBands = 320;
+    double mWeightingDbPerOctave = 6.0;
+    double mWeightingCenterFrequency = 1'000.0;
 
     // "Realtime" parameters. Usually just a lightweight atomic `store`
-    std::atomic<int> mFftHopSize = 256;
+    std::atomic<int> mFftHopSize = 1024;
     std::atomic<double> mAttack = 15.0;
     std::atomic<double> mRelease = 0.85;
-    std::atomic<double> mWeightingDbPerOctave = 6.0;
-    std::atomic<double> mWeightingCenterFrequency = 1'000.0;
     std::atomic<double> mMinDb = -100.0;
 
     std::vector<float> mWindow;
@@ -92,5 +92,6 @@ class AnalyzerProcessor {
 
     std::mutex mMutex;
 
+    std::vector<double> mBinWeights;
     std::vector<Band> mBands;
 };
