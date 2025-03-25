@@ -33,10 +33,10 @@ class AnalyzerFrame : public visage::Frame {
     void draw(visage::Canvas& canvas) override {
         mAnalyzerProcessor.process(canvas.deltaTime());
 
-        const auto& bands = mAnalyzerProcessor.bands();
-        for (int i = 0; i < bands.size(); ++i) {
-            mLine->setXAt(i + 1, bands[i].x0to1 * width());
-            mLine->setYAt(i + 1, bands[i].y0to1 * height());
+        const auto& line = mAnalyzerProcessor.spectrumLine();
+        for (int i = 0; i < line.size(); ++i) {
+            mLine->setXAt(i + 1, line[i].x * width());
+            mLine->setYAt(i + 1, line[i].y * height());
         }
 
         redraw();
@@ -44,7 +44,7 @@ class AnalyzerFrame : public visage::Frame {
 
   private:
     void updateLine() {
-        const auto numPoints = mAnalyzerProcessor.bands().size() + 2;
+        const auto numPoints = mAnalyzerProcessor.spectrumLine().size() + 2;
         if (mLine != nullptr && mLine->numPoints() == numPoints)
             return;
 

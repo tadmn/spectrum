@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tb_FifoBuffer.h>
+#include <tb_Interpolation.h>
 #include <farbot/RealtimeObject.hpp>
 #include <FastFourier/FastFourier.h>
 
@@ -13,8 +14,6 @@ class AnalyzerProcessor {
     struct Band {
         std::vector<int> bins = {};
         double dB = -100.0;
-        double x0to1 = 0.0;
-        double y0to1 = 0.0;
     };
 
     AnalyzerProcessor();
@@ -22,8 +21,10 @@ class AnalyzerProcessor {
     std::function<void()> onParametersChanged;
     std::function<void()> onBandsChanged;
 
-    void setTargetNumBands(int targetNumberOfBands);
+    const std::vector<tb::Point>& spectrumLine() const;
     const std::vector<Band>& bands() const noexcept { return mBands; }
+
+    void setTargetNumBands(int targetNumberOfBands);
 
     void setSampleRate(double sampleRate);
     double sampleRate() const noexcept { return mSampleRate; }
@@ -42,6 +43,9 @@ class AnalyzerProcessor {
 
     void setWeightingCenterFrequency(double centerFrequency);
     double weightingCenterFrequency() const noexcept;
+
+    void setLineSmoothingFactor(double factor);
+    double lineSmoothingFactor() const noexcept { return mLineSmoothingFactor; }
 
     void setFftHopSize(int hopSize);
     int fftHopSize() const noexcept { return mFftHopSize.load(std::memory_order_relaxed); }
@@ -71,12 +75,13 @@ class AnalyzerProcessor {
     // "Non-realtime" parameters (i.e. they require a more hefty internal update, with buffers & the
     // band vector being resized, etc.)
     double mSampleRate = 44'100.0;
-    int mFftSize = 2048;
+    int mFftSize = 8'192;
     double mMinFrequency = 15.0;
     double mMaxFrequency = 22'000.0;
     int mTargetNumBands = 320;
     double mWeightingDbPerOctave = 6.0;
     double mWeightingCenterFrequency = 1'000.0;
+    double mLineSmoothingFactor = 8.0;
 
     // "Realtime" parameters. Usually just a lightweight atomic `store`
     std::atomic<int> mFftHopSize = 1024;
@@ -94,4 +99,7 @@ class AnalyzerProcessor {
 
     std::vector<double> mBinWeights;
     std::vector<Band> mBands;
+
+    std::vector<tb::Point> mBandsLine;
+    std::vector<tb::Point> mSmoothedLine;
 };

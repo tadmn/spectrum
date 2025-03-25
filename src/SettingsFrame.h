@@ -71,7 +71,9 @@ class SettingsFrame : public visage::Frame {
                          [&p](const visage::String& t) {
                              p.setWeightingCenterFrequency(t.toFloat());
                          }),
-        mMinDb("Min dB", [&p](const visage::String& t) { p.setMinDb(t.toFloat()); }) {
+        mMinDb("Min dB", [&p](const visage::String& t) { p.setMinDb(t.toFloat()); }),
+        mSmoothingFactor("Smoothing Factor",
+                         [&p](const visage::String& t) { p.setLineSmoothingFactor(t.toFloat()); }) {
         addChild(mNumBands);
         addChild(mFftSize);
         addChild(mFftHopSize);
@@ -82,6 +84,7 @@ class SettingsFrame : public visage::Frame {
         addChild(mDbPerOctave);
         addChild(mCenterFrequency);
         addChild(mMinDb);
+        addChild(mSmoothingFactor);
 
         auto onParametersChanged = [this, &p] {
             mNumBands.setValue(p.bands().size());
@@ -94,6 +97,7 @@ class SettingsFrame : public visage::Frame {
             mDbPerOctave.setValue(p.weightingDbPerOctave());
             mCenterFrequency.setValue(p.weightingCenterFrequency());
             mMinDb.setValue(p.minDb());
+            mSmoothingFactor.setValue(p.lineSmoothingFactor());
         };
 
         onParametersChanged();  // Set initial values
@@ -115,5 +119,5 @@ class SettingsFrame : public visage::Frame {
 
   private:
     LabeledTextEditor mNumBands, mFftSize, mMinFreq, mMaxFreq, mFftHopSize, mAttack, mRelease,
-        mDbPerOctave, mCenterFrequency, mMinDb;
+        mDbPerOctave, mCenterFrequency, mMinDb, mSmoothingFactor;
 };

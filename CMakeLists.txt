@@ -27,7 +27,7 @@ option(COPY_AFTER_BUILD "Copy the CLAP to ~/Library on macOS" TRUE)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
 CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
-CPMAddPackage("gh:tadmn/tad-bits#5830594bafec636a45bbe805a80922be02c73d1b")
+CPMAddPackage("gh:tadmn/tad-bits#55bb046e1af8e37b3e7612b60057a4cd697c05c9")
 CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")

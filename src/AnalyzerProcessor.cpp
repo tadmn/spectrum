@@ -2,13 +2,19 @@
 #include "AnalyzerProcessor.h"
 #include "LiveValue.h"
 
+#include <numeric>
 #include <tb_Math.h>
 #include <tb_Windowing.h>
 
-#include <numeric>
-
 AnalyzerProcessor::AnalyzerProcessor() {
     updateBands();
+}
+
+const std::vector<tb::Point>& AnalyzerProcessor::spectrumLine() const {
+    if (! mSmoothedLine.empty())
+        return mSmoothedLine;
+
+    return mBandsLine;
 }
 
 void AnalyzerProcessor::setTargetNumBands(int targetNumberOfBands) {
@@ -96,6 +102,18 @@ double AnalyzerProcessor::weightingCenterFrequency() const noexcept {
     return mWeightingCenterFrequency;
 }
 
+void AnalyzerProcessor::setLineSmoothingFactor(double factor) {
+    factor = std::max(factor, 1.0);
+
+    {
+        const std::scoped_lock lock(mMutex);
+        mLineSmoothingFactor = factor;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
 void AnalyzerProcessor::setFftHopSize(int hopSize) {
     hopSize = clampFftHopSize(hopSize);
     mFftHopSize.store(hopSize, std::memory_order_relaxed);
@@ -159,7 +177,8 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
         fftOutput = *f;
     }
 
-    for (auto& band : mBands) {
+    for (int i = 0; i < mBands.size(); ++i) {
+        auto& band = mBands[i];
         double bandEnergy = 0.0;
         for (auto bin : band.bins) {
             double mag = std::abs(fftOutput[bin]);
@@ -190,7 +209,11 @@ void AnalyzerProcessor::process(double deltaTimeSeconds) {
             band.dB = dB;
         }
 
-        band.y0to1 = dB / minDb;
+        mBandsLine[i + 1].y = dB / minDb;
+    }
+
+    if (mSmoothedLine.size() > mBandsLine.size()) {
+        tb::catmullRomSpline(mBandsLine, mSmoothedLine);
     }
 }
 
@@ -270,26 +293,43 @@ void AnalyzerProcessor::updateBands() {
         mBinWeights[i] = weight * normalizationFactor;
     }
 
-    // Now update the x positions for each band. Ignore bands that don't have any bins assigned
-    // to them since we'll just throw those away
+    // Now update the x positions for each band
+    mBandsLine.clear();
+    mBandsLine.resize(mBands.size() + 2, {-1.0, 1.0});
+
+    mBandsLine.front().x = 0.0;
+    mBandsLine.back().x  = 1.0;
+
     for (int i = 0; i < mBands.size(); ++i) {
         const auto numBinsInBand = std::accumulate(mBands[i].bins.begin(), mBands[i].bins.end(), 0);
         if (numBinsInBand == 1) {
             // Just use the actual frequency position of the single bin
             const auto freq = mBands[i].bins[0] * deltaFreq;
-            mBands[i].x0to1 = tb::to0to1(std::log10(freq), logMinFreq, logMaxFreq);
+            mBandsLine[i + 1].x = tb::to0to1(std::log10(freq), logMinFreq, logMaxFreq);
         } else if (numBinsInBand > 1) {
             // Use the center position of the band
             const auto w = (1.0 / mTargetNumBands);
             const auto x0to1 = i * w + w * 0.5;
-            mBands[i].x0to1 = x0to1;
+            mBandsLine[i + 1].x = x0to1;
         }
     }
 
     // Now remove all the bands that don't have any bins assigned to them so we don't have gaps
     mBands.erase(std::remove_if(mBands.begin(), mBands.end(),
-                                [](const Band& band) { return band.bins.empty(); }),
+                                [](const Band& b) { return b.bins.empty(); }),
                  mBands.end());
+
+    mBandsLine.erase(std::remove_if(mBandsLine.begin(), mBandsLine.end(),
+                                [](const tb::Point& p) { return p.x < 0.0; }),
+                 mBandsLine.end());
+
+    {
+        mSmoothedLine.clear();
+        const int smoothedLineSize = std::round(mLineSmoothingFactor * mBandsLine.size());
+        if (smoothedLineSize > mSmoothedLine.size()) {
+            mSmoothedLine.resize(std::round(mLineSmoothingFactor * mBands.size()));
+        }
+    }
 
     reset();
 
