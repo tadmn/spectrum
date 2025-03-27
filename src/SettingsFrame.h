@@ -5,6 +5,8 @@
 #include "embedded/Fonts.h"
 #include "visage/widgets.h"
 
+#include "LiveValue.h"
+
 class PaletteColorWindow : public visage::ApplicationWindow {
   public:
     PaletteColorWindow(visage::Palette& palette) {
@@ -31,7 +33,7 @@ class LabeledTextEditor : public visage::Frame {
   public:
     LabeledTextEditor(const std::string& label,
                       const std::function<void(const visage::String&)>& setValue) : mLabel(label) {
-        mEditor.setFont({ 30, resources::fonts::DroidSansMono_ttf });
+        mEditor.setFont({ 26, resources::fonts::DroidSansMono_ttf });
         mEditor.onEnterKey() = [this, setValue] { setValue(mEditor.text()); };
         mEditor.setAlphaTransparency(0.9);
         addChild(mEditor);
@@ -43,14 +45,17 @@ class LabeledTextEditor : public visage::Frame {
 
     void draw(visage::Canvas& canvas) override {
         canvas.setColor(0xff000000);
-        canvas.text(mLabel, { kFontSize, resources::fonts::DroidSansMono_ttf },
-                    visage::Font::kCenter, 0, 0, width(), kFontSize);
+        canvas.text(mLabel, { kLabelFontSize, resources::fonts::DroidSansMono_ttf },
+                    visage::Font::kCenter, 0, 2, width(), kLabelFontSize);
     }
 
-    void resized() override { mEditor.setBounds(0, kFontSize, width(), height() - kFontSize); }
+    void resized() override {
+        constexpr auto kGap = 4;
+        mEditor.setBounds(0, kLabelFontSize + kGap, width(), height() - kLabelFontSize - kGap);
+    }
 
   private:
-    static constexpr auto kFontSize = 25;
+    static constexpr auto kLabelFontSize = 20;
     std::string mLabel;
     visage::TextEditor mEditor;
 };
@@ -72,7 +77,7 @@ class SettingsFrame : public visage::Frame {
                              p.setWeightingCenterFrequency(t.toFloat());
                          }),
         mMinDb("Min dB", [&p](const visage::String& t) { p.setMinDb(t.toFloat()); }),
-        mSmoothingFactor("Smoothing Factor",
+        mSmoothingFactor("Smooth",
                          [&p](const visage::String& t) { p.setLineSmoothingFactor(t.toFloat()); }) {
         addChild(mNumBands);
         addChild(mFftSize);
@@ -102,19 +107,24 @@ class SettingsFrame : public visage::Frame {
 
         onParametersChanged();  // Set initial values
         p.onParametersChanged = std::move(onParametersChanged);
+
+        setFlexLayout(true);
+        layout().setFlexWrap(true);
+        layout().setPadding(5);
+        layout().setFlexGap(5);
+
+        for (auto* child : children()) {
+            child->layout().setWidth(120);
+            child->layout().setHeight(90);
+            child->layout().setFlexGrow(2.0);
+        }
     }
 
     ~SettingsFrame() override { }
 
-    void draw(visage::Canvas& canvas) override {
-        canvas.setColor(0xffffffff);
-        canvas.fill(0, 0, width(), height());
-    }
-
-    void resized() override {
-        const auto w = width() / children().size();
-        for (int i = 0; i < children().size(); ++i)
-            children()[i]->setBounds(i * w, 0, w, height());
+    void draw(visage::Canvas& c) override {
+        c.setColor(0xffffffff);
+        c.roundedRectangle(0, 0, width(), height(), 10.0);
     }
 
   private:

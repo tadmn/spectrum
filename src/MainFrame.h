@@ -23,7 +23,7 @@ class MainFrame : public visage::Frame {
     MainFrame(AnalyzerProcessor& p) :
         mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size),
         mSettings(p) {
-        mSettings.setAlphaTransparency(0.75);
+        mSettings.setAlphaTransparency(0.67);
         mPalette.initWithDefaults();
         setPalette(&mPalette);
 
@@ -43,10 +43,10 @@ class MainFrame : public visage::Frame {
 
     void resized() override {
         mButton.setBounds(15, 15, 65, 65);
-        mSettings.setBounds(mButton.right() + 15, 0, width() - mButton.width() - 15, 100);
+        mSettings.setBounds(mButton.right() + 15, 3, width() - mButton.right() - 15 - 10, 98);
         mAnalyzer.setBounds(0, 0, width(), height());
 
-        const auto h = height() / 3.5;
+        const auto h = height() * 0.5;
         mGradientOverlay.setBounds(0, height() - h, width(), h);
     }
 
