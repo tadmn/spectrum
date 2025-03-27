@@ -46,7 +46,7 @@ class MainFrame : public visage::Frame {
         mSettings.setBounds(mButton.right() + 15, 3, width() - mButton.right() - 15 - 10, 98);
         mAnalyzer.setBounds(0, 0, width(), height());
 
-        const auto h = height() * 0.5;
+        const auto h = height() * 0.6;
         mGradientOverlay.setBounds(0, height() - h, width(), h);
     }
 

@@ -16,7 +16,7 @@ namespace cb = choc::buffer;
 
 class SpectrumPlugin : public ClapPlugin {
   public:
-    static clap_plugin_descriptor descriptor;
+    static const clap_plugin_descriptor* getDescriptor();
 
     explicit SpectrumPlugin(const clap_host* host);
     ~SpectrumPlugin() override;

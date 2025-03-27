@@ -1,33 +1,32 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.28)
 
-include(FetchContent)
 include(cmake/CPM.cmake)
 
-project(spectrum VERSION 0.0.0 LANGUAGES C CXX)
-
-if(APPLE)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0 CACHE STRING "Build for 14.0")
-endif()
-
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Build for 10.15")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+project(spectrum VERSION 0.0.0 LANGUAGES C CXX)
+set(PRODUCT_NAME "Spectrum")
+
+option(USE_SANITIZER "Build and link with ASAN" FALSE)
+option(COPY_AFTER_BUILD "Will copy after build" TRUE)
 
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "CMAKE_BUILD_TYPE unspecified; picking Release")
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_STANDARD 20)
-
-if(APPLE)
-  option(USE_SANITIZER "Build and link with ASAN" FALSE)
-endif()
-
-option(COPY_AFTER_BUILD "Copy the CLAP to ~/Library on macOS" TRUE)
+CPMAddPackage("gh:tadmn/tad-bits#48b40bf33b23eb88302ba8b60d29804124d048d6")
+include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
 CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7d5")
-CPMAddPackage("gh:tadmn/tad-bits#9e50ea48e68046d0c150cc38d0cbf61db8449f59")
+
+set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE CACHE BOOL "Download plugin dependencies")
+set(CLAP_WRAPPER_OUTPUT_NAME "${PRODUCT_NAME}" CACHE BOOL "ClapAsVST3 Wrapper name")
+CPMAddPackage("gh:free-audio/clap-wrapper#a610e1a0821d54f2c64d1f13fd737ba2ccf314ab")
+
 CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")
@@ -41,78 +40,42 @@ file(GLOB_RECURSE ICON_FILES icons/*.svg)
 add_embedded_resources(EmbeddedIconResources "Icons.h" "resources::icons" "${ICON_FILES}")
 
 file(GLOB SOURCE_FILES src/*.cpp src/*.h)
-add_library(${PROJECT_NAME} MODULE ${SOURCE_FILES})
 
-target_link_libraries(${PROJECT_NAME}
-  clap clap-helpers
-  tad-bits
-  choc farbot FastFourier
+add_library(${PROJECT_NAME}-impl STATIC ${SOURCE_FILES})
+target_link_libraries(${PROJECT_NAME}-impl PUBLIC clap)
+target_link_libraries(${PROJECT_NAME}-impl PRIVATE
+  clap-helpers clap-wrapper-extensions
+  tad-bits choc farbot FastFourier
   visage EmbeddedFontResources EmbeddedIconResources
 )
 
-if(APPLE)
-  set_target_properties(${PROJECT_NAME} PROPERTIES
-    BUNDLE True
-    BUNDLE_EXTENSION clap
-    MACOSX_BUNDLE_GUI_IDENTIFIER com.tadmn.${PROJECT_NAME}
-    MACOSX_BUNDLE_BUNDLE_NAME ${PROJECT_NAME}
-    MACOSX_BUNDLE_BUNDLE_VERSION "0.0"
-    MACOSX_BUNDLE_SHORT_VERSION_STRING "0.0"
-    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/cmake/${PROJECT_NAME}.plist.in
-  )
+target_compile_definitions(${PROJECT_NAME}-impl PRIVATE
+  PRODUCT_NAME="${PRODUCT_NAME}"
+  PRODUCT_VERSION="${PROJECT_VERSION}"
+)
 
-  target_compile_definitions(${PROJECT_NAME} PRIVATE IS_MAC=1)
-  target_compile_options(${PROJECT_NAME} PRIVATE
-    -Werror
-    $<$<BOOL:${USE_SANITIZER}>:-fsanitize=address>
-    $<$<BOOL:${USE_SANITIZER}>:-fsanitize=undefined>
-  )
-  target_link_options(${PROJECT_NAME} PRIVATE
-    $<$<BOOL:${USE_SANITIZER}>:-fsanitize=address>
-    $<$<BOOL:${USE_SANITIZER}>:-fsanitize=undefined>
-  )
+add_compiler_warnings(${PROJECT_NAME}-impl)
 
-  if(${COPY_AFTER_BUILD})
-    message(STATUS "Will copy plugin after every build")
-    set(products_folder ${CMAKE_BINARY_DIR})
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E echo "Installing ${products_folder}/${PROJECT_NAME}.clap to ~/Library/Audio/Plug-Ins/CLAP/"
-      COMMAND ${CMAKE_COMMAND} -E make_directory "~/Library/Audio/Plug-Ins/CLAP"
-      COMMAND ${CMAKE_COMMAND} -E copy_directory "${products_folder}/${PROJECT_NAME}.clap" "~/Library/Audio/Plug-Ins/CLAP/${PROJECT_NAME}.clap"
-    )
-  endif()
-endif()
+make_clapfirst_plugins(
+  TARGET_NAME ${PROJECT_NAME}
+  IMPL_TARGET ${PROJECT_NAME}-impl
 
-if((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
-  target_compile_options(${PROJECT_NAME} PRIVATE
-    -Wall
-    -Wshadow-all
-    -Wstrict-aliasing
-    -Wuninitialized
-    -Wunused-parameter
-    -Wint-conversion
-    -Wconditional-uninitialized
-    -Wconstant-conversion
-    -Wbool-conversion
-    -Wextra-semi
-    -Wunreachable-code
-    -Wcast-align
-    -Wshift-sign-overflow
-    -Wmissing-prototypes
-    -Wnullable-to-nonnull-conversion
-    -Wno-ignored-qualifiers
-    -Wswitch-enum
-    -Wpedantic
-    -Wdeprecated
-    -Wfloat-equal
-    -Wmissing-field-initializers
-    $<$<OR:$<COMPILE_LANGUAGE:CXX>,$<COMPILE_LANGUAGE:OBJCXX>>:
-    -Wzero-as-null-pointer-constant
-    -Wunused-private-field
-    -Woverloaded-virtual
-    -Wreorder
-    -Winconsistent-missing-destructor-override>
-    $<$<OR:$<COMPILE_LANGUAGE:OBJC>,$<COMPILE_LANGUAGE:OBJCXX>>:
-    -Wunguarded-availability
-    -Wunguarded-availability-new>)
-endif()
+  OUTPUT_NAME "${PRODUCT_NAME}"
+
+  ENTRY_SOURCE src/SpectrumPluginEntry.cpp
+
+  BUNDLE_IDENTIFER "com.tadmn.spectrum"
+  BUNDLE_VERSION ${PROJECT_VERSION}
+
+  COPY_AFTER_BUILD ${COPY_AFTER_BUILD}
+
+  PLUGIN_FORMATS CLAP VST3 AUV2
+
+  ASSET_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME}_assets
+
+  # You can add a target-per-standalone you want. Syntax here is
+  #   target-postfix output-name clap-id
+  # This allows you to make multiple standalones from a multi-plugin clap
+  STANDALONE_CONFIGURATIONS
+  standalone "${PRODUCT_NAME}" "com.tadmn.spectrum"
+)

@@ -4,18 +4,26 @@
 
 #include <clap/helpers/plugin.hxx>
 
-clap_plugin_descriptor SpectrumPlugin::descriptor = { .clap_version = CLAP_VERSION,
-                                                .id = "com.tadmn.spectrum",
-                                                .name = "Spectrum",
-                                                .vendor = "tadmn",
-                                                .url = "",
-                                                .manual_url = "",
-                                                .support_url = "",
-                                                .version = "0.0.0",
-                                                .description = "Spectrum" };
+const clap_plugin_descriptor* SpectrumPlugin::getDescriptor() {
+    static const char* features[] = { CLAP_PLUGIN_FEATURE_MONO, CLAP_PLUGIN_FEATURE_ANALYZER,
+                                      "Free and Open Source", nullptr };
+
+    static clap_plugin_descriptor desc = {
+        CLAP_VERSION,
+        "com.tadmn.spectrum",
+        PRODUCT_NAME,
+        "tadmn",
+        "",
+        "",
+        "",
+        PRODUCT_VERSION,
+        "Buttery smooth audio spectrum analyzer",
+        &features[0]};
+    return &desc;
+}
 
 SpectrumPlugin::SpectrumPlugin(const clap_host* host) :
-    ClapPlugin(&SpectrumPlugin::descriptor, host) { }
+    ClapPlugin(getDescriptor(), host) { }
 
 SpectrumPlugin::~SpectrumPlugin() = default;
 
@@ -54,6 +62,7 @@ bool SpectrumPlugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio
     info->flags = CLAP_AUDIO_PORT_IS_MAIN;
     info->channel_count = 1;
     info->in_place_pair = 0;
+    info->port_type = CLAP_PORT_MONO;
 
     return true;
 }
