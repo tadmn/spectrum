@@ -33,7 +33,7 @@ class LabeledTextEditor : public visage::Frame {
   public:
     LabeledTextEditor(const std::string& label,
                       const std::function<void(const visage::String&)>& setValue) : mLabel(label) {
-        mEditor.setFont({ 26, resources::fonts::DroidSansMono_ttf });
+        mEditor.setFont({ 13, resources::fonts::DroidSansMono_ttf });
         mEditor.onEnterKey() = [this, setValue] { setValue(mEditor.text()); };
         mEditor.setAlphaTransparency(0.9);
         addChild(mEditor);
@@ -55,7 +55,7 @@ class LabeledTextEditor : public visage::Frame {
     }
 
   private:
-    static constexpr auto kLabelFontSize = 20;
+    static constexpr auto kLabelFontSize = 11;
     std::string mLabel;
     visage::TextEditor mEditor;
 };
@@ -107,17 +107,6 @@ class SettingsFrame : public visage::Frame {
 
         onParametersChanged();  // Set initial values
         p.onParametersChanged = std::move(onParametersChanged);
-
-        setFlexLayout(true);
-        layout().setFlexWrap(true);
-        layout().setPadding(5);
-        layout().setFlexGap(5);
-
-        for (auto* child : children()) {
-            child->layout().setWidth(120);
-            child->layout().setHeight(90);
-            child->layout().setFlexGrow(2.0);
-        }
     }
 
     ~SettingsFrame() override { }
@@ -125,6 +114,13 @@ class SettingsFrame : public visage::Frame {
     void draw(visage::Canvas& c) override {
         c.setColor(0xffffffff);
         c.roundedRectangle(0, 0, width(), height(), 10.0);
+    }
+
+    void resized() override {
+        auto b = localBounds().reduced(1);
+        for (auto* c : children()) {
+            c->setBounds(b.trimLeft(85).reduced(4));
+        }
     }
 
   private:

@@ -89,21 +89,18 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
     if (is_floating)
         return false;
 
-    if (mApp != nullptr)
+    if (mApp)
         return true;
 
     mApp = std::make_unique<visage::ApplicationWindow>();
-    mApp->setWindowDimensions(50, 50);
-
-    mApp->onDraw() = [this](visage::Canvas& canvas) {
-        canvas.setColor(0xff000000);
-        canvas.fill(0, 0, mApp->width(), mApp->height());
+    mApp->setWindowDimensions(120, 70);
+    mApp->onDraw() = [this](visage::Canvas& c) {
+        c.setColor(0xff000000);
+        c.fill(0, 0, mApp->width(), mApp->height());
     };
 
     mApp->onWindowContentsResized() = [this] {
-        _host.guiRequestResize(static_cast<uint32_t>(mApp->logicalWidth()),
-                               static_cast<uint32_t>(mApp->logicalHeight()));
-
+        _host.guiRequestResize(pluginWidth(), pluginHeight());
         mApp->children()[0]->setBounds(0, 0, mApp->width(), mApp->height());
     };
 
@@ -137,23 +134,24 @@ bool SpectrumPlugin::guiSetParent(clap_window const* window) noexcept {
 }
 
 bool SpectrumPlugin::guiGetResizeHints(clap_gui_resize_hints_t* hints) noexcept {
-    if (mApp == nullptr)
+    if (! mApp)
         return false;
 
-    bool fixed_aspect_ratio = mApp->isFixedAspectRatio();
+    const bool fixed_aspect_ratio = mApp->isFixedAspectRatio();
     hints->can_resize_horizontally = true;
     hints->can_resize_vertically = true;
     hints->preserve_aspect_ratio = fixed_aspect_ratio;
 
     if (fixed_aspect_ratio) {
-        hints->aspect_ratio_width = static_cast<uint32_t>(mApp->height() * mApp->aspectRatio());
-        hints->aspect_ratio_height = static_cast<uint32_t>(mApp->width());
+        hints->aspect_ratio_width = mApp->height() * mApp->aspectRatio();
+        hints->aspect_ratio_height = mApp->width();
     }
+
     return true;
 }
 
 bool SpectrumPlugin::guiAdjustSize(uint32_t* width, uint32_t* height) noexcept {
-    if (mApp == nullptr)
+    if (! mApp)
         return false;
 
     mApp->adjustWindowDimensions(width, height, true, true);
@@ -161,18 +159,50 @@ bool SpectrumPlugin::guiAdjustSize(uint32_t* width, uint32_t* height) noexcept {
 }
 
 bool SpectrumPlugin::guiSetSize(uint32_t width, uint32_t height) noexcept {
-    if (mApp == nullptr)
+    if (! mApp)
         return false;
 
-    mApp->setWindowDimensions(static_cast<int>(width), static_cast<int>(height));
+    setPluginDimensions(width, height);
     return true;
 }
 
 bool SpectrumPlugin::guiGetSize(uint32_t* width, uint32_t* height) noexcept {
-    if (mApp == nullptr)
+    if (! mApp)
         return false;
 
-    *width = static_cast<uint32_t>(mApp->logicalWidth());
-    *height = static_cast<uint32_t>(mApp->logicalHeight());
+    *width = pluginWidth();
+    *height = pluginHeight();
     return true;
+}
+
+int SpectrumPlugin::pluginWidth() const {
+    if (! mApp)
+        return 0;
+
+#if __APPLE__
+    return mApp->width();
+#else
+    return mApp->nativeWidth();
+#endif
+}
+
+int SpectrumPlugin::pluginHeight() const {
+    if (! mApp)
+        return 0;
+
+#if __APPLE__
+    return mApp->height();
+#else
+    return mApp->nativeHeight();
+#endif
+}
+
+void SpectrumPlugin::setPluginDimensions(int width, int height) {
+    if (! mApp)
+        return;
+#if __APPLE__
+    mApp->setWindowDimensions(width, height);
+#else
+    mApp->setNativeWindowDimensions(width, height);
+#endif
 }

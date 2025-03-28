@@ -42,12 +42,13 @@ class MainFrame : public visage::Frame {
     ~MainFrame() override { }
 
     void resized() override {
-        mButton.setBounds(15, 15, 65, 65);
-        mSettings.setBounds(mButton.right() + 15, 3, width() - mButton.right() - 15 - 10, 98);
-        mAnalyzer.setBounds(0, 0, width(), height());
+        auto b = localBounds();
+        mAnalyzer.setBounds(b);
+        mGradientOverlay.setBounds(b.copy().trimBottom(0.6 * height()));
 
-        const auto h = height() * 0.6;
-        mGradientOverlay.setBounds(0, height() - h, width(), h);
+        b = b.trimTop(54);
+        mButton.setBounds(b.trimLeft(40).reduced(4));
+        mSettings.setBounds(b.reduced(0, 3, 3, 3));
     }
 
   private:

@@ -51,6 +51,10 @@ class SpectrumPlugin : public ClapPlugin {
     bool guiGetSize(uint32_t* width, uint32_t* height) noexcept override;
 
   private:
+    int pluginWidth() const;
+    int pluginHeight() const;
+    void setPluginDimensions(int width, int height);
+
     AnalyzerProcessor mAnalyzerProcessor;
 
     std::unique_ptr<visage::ApplicationWindow> mApp;
