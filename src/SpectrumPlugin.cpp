@@ -41,7 +41,7 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    mAnalyzerProcessor.process(in);
+    mAnalyzerProcessor.process(in.getFirstChannels(1));
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {
@@ -58,11 +58,12 @@ bool SpectrumPlugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio
     if (index != 0)
         return false;
 
+    strncpy(info->name, "Main Input", sizeof(info->name));
     info->id = 0;
     info->flags = CLAP_AUDIO_PORT_IS_MAIN;
-    info->channel_count = 1;
+    info->channel_count = 2;
     info->in_place_pair = 0;
-    info->port_type = CLAP_PORT_MONO;
+    info->port_type = CLAP_PORT_STEREO;
 
     return true;
 }
@@ -93,7 +94,7 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
         return true;
 
     mApp = std::make_unique<visage::ApplicationWindow>();
-    mApp->setWindowDimensions(120, 70);
+    mApp->setWindowDimensions(900, 520);
     mApp->onDraw() = [this](visage::Canvas& c) {
         c.setColor(0xff000000);
         c.fill(0, 0, mApp->width(), mApp->height());
