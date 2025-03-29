@@ -4,7 +4,6 @@
 
 #include <numeric>
 #include <tb_Math.h>
-#include <tb_Windowing.h>
 
 AnalyzerProcessor::AnalyzerProcessor() {
     updateBands();
@@ -108,6 +107,16 @@ void AnalyzerProcessor::setLineSmoothingFactor(double factor) {
     {
         const std::scoped_lock lock(mMutex);
         mLineSmoothingFactor = factor;
+        updateBands();
+    }
+
+    parameterChanged();
+}
+
+void AnalyzerProcessor::setWindowType(tb::WindowType windowType) {
+    {
+        const std::scoped_lock lock(mMutex);
+        mWindowType = windowType;
         updateBands();
     }
 
@@ -228,7 +237,7 @@ void AnalyzerProcessor::reset() {
 void AnalyzerProcessor::updateBands() {
     const auto numBins = mFftSize / 2 + 1;
 
-    mWindow = tb::window(tb::Window::Hann, mFftSize);
+    mWindow = tb::window<float>(mWindowType, mFftSize);
     mFifoBuffer = std::make_unique<tb::FifoBuffer<float>>(1, mFftSize);
     mFftInBuffer.resize({ .numChannels = 1, .numFrames = static_cast<uint>(mFftSize) });
     mFft = std::make_unique<FastFourier>(mFftSize);

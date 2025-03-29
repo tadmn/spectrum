@@ -17,7 +17,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-CPMAddPackage("gh:tadmn/tad-bits#48b40bf33b23eb88302ba8b60d29804124d048d6")
+CPMAddPackage("gh:tadmn/tad-bits#df4da5f71935a4bf81544f2db56ef4bd2e245171")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
@@ -31,6 +31,7 @@ CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")
 CPMAddPackage("gh:tadmn/visage#677b82d19747cb2331a5bc524836685e53f1f14c")
+CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
 
 # Visage embedded file resources
 file(GLOB_RECURSE FONT_FILES fonts/*.ttf)
@@ -47,6 +48,7 @@ target_link_libraries(${PROJECT_NAME}-impl PRIVATE
   clap-helpers clap-wrapper-extensions
   tad-bits choc farbot FastFourier
   visage EmbeddedFontResources EmbeddedIconResources
+  magic_enum
 )
 
 target_compile_definitions(${PROJECT_NAME}-impl PRIVATE

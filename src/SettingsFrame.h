@@ -3,9 +3,10 @@
 
 #include "AnalyzerProcessor.h"
 #include "embedded/Fonts.h"
-#include "visage/widgets.h"
 
-#include "LiveValue.h"
+#include <visage/widgets.h>
+#include <visage/ui.h>
+#include <magic_enum/magic_enum.hpp>
 
 class PaletteColorWindow : public visage::ApplicationWindow {
   public:
@@ -78,7 +79,8 @@ class SettingsFrame : public visage::Frame {
                          }),
         mMinDb("Min dB", [&p](const visage::String& t) { p.setMinDb(t.toFloat()); }),
         mSmoothingFactor("Smooth",
-                         [&p](const visage::String& t) { p.setLineSmoothingFactor(t.toFloat()); }) {
+                         [&p](const visage::String& t) { p.setLineSmoothingFactor(t.toFloat()); }),
+    mWindowMenuButton("", {10, resources::fonts::DroidSansMono_ttf}){
         addChild(mNumBands);
         addChild(mFftSize);
         addChild(mFftHopSize);
@@ -90,6 +92,7 @@ class SettingsFrame : public visage::Frame {
         addChild(mCenterFrequency);
         addChild(mMinDb);
         addChild(mSmoothingFactor);
+        addChild(mWindowMenuButton);
 
         auto onParametersChanged = [this, &p] {
             mNumBands.setValue(p.bands().size());
@@ -103,10 +106,24 @@ class SettingsFrame : public visage::Frame {
             mCenterFrequency.setValue(p.weightingCenterFrequency());
             mMinDb.setValue(p.minDb());
             mSmoothingFactor.setValue(p.lineSmoothingFactor());
+            mWindowMenuButton.setText(std::string(magic_enum::enum_name(p.windowType())));
         };
 
         onParametersChanged();  // Set initial values
         p.onParametersChanged = std::move(onParametersChanged);
+
+        mWindowMenuButton.setActionButton(true);
+        mWindowMenuButton.onToggle() = [&p, this](visage::Button* /*button*/, bool /*toggled*/) {
+            visage::PopupMenu menu;
+            for (auto w : magic_enum::enum_entries<tb::WindowType>())
+                menu.addOption(magic_enum::enum_index(w.first).value(), std::string(w.second));
+
+            menu.onSelection() = [&p](int id) {
+                p.setWindowType(magic_enum::enum_cast<tb::WindowType>(id).value());
+            };
+
+            menu.show(&mWindowMenuButton);
+        };
     }
 
     ~SettingsFrame() override { }
@@ -119,11 +136,16 @@ class SettingsFrame : public visage::Frame {
     void resized() override {
         auto b = localBounds().reduced(1);
         for (auto* c : children()) {
-            c->setBounds(b.trimLeft(85).reduced(4));
+            auto w = 85;
+            if (c == &mWindowMenuButton)
+                w = 118;
+
+            c->setBounds(b.trimLeft(w).reduced(4));
         }
     }
 
   private:
     LabeledTextEditor mNumBands, mFftSize, mMinFreq, mMaxFreq, mFftHopSize, mAttack, mRelease,
         mDbPerOctave, mCenterFrequency, mMinDb, mSmoothingFactor;
+    visage::UiButton mWindowMenuButton;
 };

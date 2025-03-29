@@ -3,6 +3,7 @@
 
 #include <tb_FifoBuffer.h>
 #include <tb_Interpolation.h>
+#include <tb_Windowing.h>
 #include <farbot/RealtimeObject.hpp>
 #include <FastFourier/FastFourier.h>
 
@@ -47,6 +48,9 @@ class AnalyzerProcessor {
     void setLineSmoothingFactor(double factor);
     double lineSmoothingFactor() const noexcept { return mLineSmoothingFactor; }
 
+    void setWindowType(tb::WindowType windowType);
+    tb::WindowType windowType() const noexcept { return mWindowType; }
+
     void setFftHopSize(int hopSize);
     int fftHopSize() const noexcept { return mFftHopSize.load(std::memory_order_relaxed); }
 
@@ -82,6 +86,7 @@ class AnalyzerProcessor {
     double mWeightingDbPerOctave = 6.0;
     double mWeightingCenterFrequency = 1'000.0;
     double mLineSmoothingFactor = 8.0;
+    tb::WindowType mWindowType = tb::WindowType::Blackman_Harris;
 
     // "Realtime" parameters. Usually just a lightweight atomic `store`
     std::atomic<int> mFftHopSize = 1024;
