@@ -86,7 +86,7 @@ class AnalyzerProcessor {
     double mWeightingDbPerOctave = 6.0;
     double mWeightingCenterFrequency = 1'000.0;
     double mLineSmoothingFactor = 8.0;
-    tb::WindowType mWindowType = tb::WindowType::Blackman_Harris;
+    tb::WindowType mWindowType = tb::WindowType::BlackmanHarris;
 
     // "Realtime" parameters. Usually just a lightweight atomic `store`
     std::atomic<int> mFftHopSize = 1024;

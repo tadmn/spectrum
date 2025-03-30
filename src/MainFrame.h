@@ -44,7 +44,7 @@ class MainFrame : public visage::Frame {
     void resized() override {
         auto b = localBounds();
         mAnalyzer.setBounds(b);
-        mGradientOverlay.setBounds(b.copy().trimBottom(0.56 * height()));
+        mGradientOverlay.setBounds(b.copy().trimBottom(0.54 * height()));
 
         b = b.trimTop(54);
         mButton.setBounds(b.trimLeft(40).reduced(4));

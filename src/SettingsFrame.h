@@ -8,26 +8,51 @@
 #include <visage/ui.h>
 #include <magic_enum/magic_enum.hpp>
 
-class PaletteColorWindow : public visage::ApplicationWindow {
+template<typename EnumType>
+class LabeledPopupMenu : public visage::Frame {
   public:
-    PaletteColorWindow(visage::Palette& palette) {
-        setTitle("Spectrum Fill Color");
-        const auto id = visage::GraphLine::LineFillColor;
-        visage::Brush color;
-        if (palette.color({}, id, color))
-            mFillColorPicker.setColor(color.gradient().sample(0));
+    LabeledPopupMenu(const std::string& label, const std::function<void(EnumType)>& setValue) :
+        mLabel(label) {
+        mMenuButton.setFont({ 11, resources::fonts::DroidSansMono_ttf });
+        mMenuButton.setActionButton(true);
+        mMenuButton.onToggle() = [this, setValue](visage::Button* /*button*/, bool /*toggled*/) {
+            visage::PopupMenu menu;
+            for (auto e : magic_enum::enum_entries<EnumType>())
+                menu.addOption(magic_enum::enum_index(e.first).value(), std::string(e.second));
 
-        mFillColorPicker.onColorChange().add([id, &palette](visage::Color c) {
-            palette.setColor(id, c);
-        });
+            menu.onSelection() = [setValue](int id) {
+                setValue(magic_enum::enum_cast<EnumType>(id).value());
+            };
 
-        addChild(mFillColorPicker);
+            menu.show(&mMenuButton);
+        };
+
+        addChild(mMenuButton);
     }
 
-    void resized() override { mFillColorPicker.setBounds(0, 0, width(), height()); }
+    ~LabeledPopupMenu() override { }
+
+    void setValue(EnumType value) {
+        mMenuButton.setText(std::string(magic_enum::enum_name(value)));
+    }
+
+    void draw(visage::Canvas& canvas) override {
+        canvas.setColor(0xff000000);
+        canvas.text(mLabel, { 11, resources::fonts::DroidSansMono_ttf }, visage::Font::kCenter,
+                    mLabelBounds.x(), mLabelBounds.y(), mLabelBounds.width(), mLabelBounds.height());
+    }
+
+    void resized() override {
+        auto b = localBounds();
+        mLabelBounds = b.trimTop(13);
+        b.trimTop(2); // Gap
+        mMenuButton.setBounds(b);
+    }
 
   private:
-    visage::ColorPicker mFillColorPicker;
+    std::string mLabel;
+    visage::Bounds mLabelBounds;
+    visage::UiButton mMenuButton;
 };
 
 class LabeledTextEditor : public visage::Frame {
@@ -46,18 +71,20 @@ class LabeledTextEditor : public visage::Frame {
 
     void draw(visage::Canvas& canvas) override {
         canvas.setColor(0xff000000);
-        canvas.text(mLabel, { kLabelFontSize, resources::fonts::DroidSansMono_ttf },
-                    visage::Font::kCenter, 0, 2, width(), kLabelFontSize);
+        canvas.text(mLabel, { 11, resources::fonts::DroidSansMono_ttf }, visage::Font::kCenter,
+                    mLabelBounds.x(), mLabelBounds.y(), mLabelBounds.width(), mLabelBounds.height());
     }
 
     void resized() override {
-        constexpr auto kGap = 4;
-        mEditor.setBounds(0, kLabelFontSize + kGap, width(), height() - kLabelFontSize - kGap);
+        auto b = localBounds();
+        mLabelBounds = b.trimTop(13);
+        b.trimTop(2); // Gap
+        mEditor.setBounds(b);
     }
 
   private:
-    static constexpr auto kLabelFontSize = 11;
     std::string mLabel;
+    visage::Bounds mLabelBounds;
     visage::TextEditor mEditor;
 };
 
@@ -80,7 +107,7 @@ class SettingsFrame : public visage::Frame {
         mMinDb("Min dB", [&p](const visage::String& t) { p.setMinDb(t.toFloat()); }),
         mSmoothingFactor("Smooth",
                          [&p](const visage::String& t) { p.setLineSmoothingFactor(t.toFloat()); }),
-    mWindowMenuButton("", {10, resources::fonts::DroidSansMono_ttf}){
+    mWindowTypeMenu("Windowing", [&p](tb::WindowType t){ p.setWindowType(t); }) {
         addChild(mNumBands);
         addChild(mFftSize);
         addChild(mFftHopSize);
@@ -92,7 +119,7 @@ class SettingsFrame : public visage::Frame {
         addChild(mCenterFrequency);
         addChild(mMinDb);
         addChild(mSmoothingFactor);
-        addChild(mWindowMenuButton);
+        addChild(mWindowTypeMenu);
 
         auto onParametersChanged = [this, &p] {
             mNumBands.setValue(p.bands().size());
@@ -106,24 +133,11 @@ class SettingsFrame : public visage::Frame {
             mCenterFrequency.setValue(p.weightingCenterFrequency());
             mMinDb.setValue(p.minDb());
             mSmoothingFactor.setValue(p.lineSmoothingFactor());
-            mWindowMenuButton.setText(std::string(magic_enum::enum_name(p.windowType())));
+            mWindowTypeMenu.setValue(p.windowType());
         };
 
         onParametersChanged();  // Set initial values
         p.onParametersChanged = std::move(onParametersChanged);
-
-        mWindowMenuButton.setActionButton(true);
-        mWindowMenuButton.onToggle() = [&p, this](visage::Button* /*button*/, bool /*toggled*/) {
-            visage::PopupMenu menu;
-            for (auto w : magic_enum::enum_entries<tb::WindowType>())
-                menu.addOption(magic_enum::enum_index(w.first).value(), std::string(w.second));
-
-            menu.onSelection() = [&p](int id) {
-                p.setWindowType(magic_enum::enum_cast<tb::WindowType>(id).value());
-            };
-
-            menu.show(&mWindowMenuButton);
-        };
     }
 
     ~SettingsFrame() override { }
@@ -137,8 +151,8 @@ class SettingsFrame : public visage::Frame {
         auto b = localBounds().reduced(1);
         for (auto* c : children()) {
             auto w = 85;
-            if (c == &mWindowMenuButton)
-                w = 118;
+            if (c == &mWindowTypeMenu)
+                w = 111;
 
             c->setBounds(b.trimLeft(w).reduced(4));
         }
@@ -147,5 +161,5 @@ class SettingsFrame : public visage::Frame {
   private:
     LabeledTextEditor mNumBands, mFftSize, mMinFreq, mMaxFreq, mFftHopSize, mAttack, mRelease,
         mDbPerOctave, mCenterFrequency, mMinDb, mSmoothingFactor;
-    visage::UiButton mWindowMenuButton;
+    LabeledPopupMenu<tb::WindowType> mWindowTypeMenu;
 };
