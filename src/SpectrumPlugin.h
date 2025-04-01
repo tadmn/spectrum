@@ -34,6 +34,10 @@ class SpectrumPlugin : public ClapPlugin {
 
     bool audioPortsInfo(uint32_t index, bool isInput, clap_audio_port_info* info) const noexcept override;
 
+    bool implementsState() const noexcept override { return true; }
+    bool stateSave(const clap_ostream* stream) noexcept override;
+    bool stateLoad(const clap_istream* stream) noexcept override;
+
     bool implementsGui() const noexcept override { return true; }
 
     bool guiIsApiSupported(const char* api, bool is_floating) noexcept override;

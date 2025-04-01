@@ -1,29 +1,29 @@
 
 #include "SpectrumPlugin.h"
+
 #include "MainFrame.h"
 
 #include <clap/helpers/plugin.hxx>
+#include <nlohmann/json.hpp>
 
 const clap_plugin_descriptor* SpectrumPlugin::getDescriptor() {
     static const char* features[] = { CLAP_PLUGIN_FEATURE_MONO, CLAP_PLUGIN_FEATURE_ANALYZER,
                                       "Free and Open Source", nullptr };
 
-    static clap_plugin_descriptor desc = {
-        CLAP_VERSION,
-        "com.tadmn.spectrum",
-        PRODUCT_NAME,
-        "tadmn",
-        "",
-        "",
-        "",
-        PRODUCT_VERSION,
-        "Buttery smooth audio spectrum analyzer",
-        &features[0]};
+    static clap_plugin_descriptor desc = { CLAP_VERSION,
+                                           "com.tadmn.spectrum",
+                                           PRODUCT_NAME,
+                                           "tadmn",
+                                           "",
+                                           "",
+                                           "",
+                                           PRODUCT_VERSION,
+                                           "Buttery smooth audio spectrum analyzer",
+                                           &features[0] };
     return &desc;
 }
 
-SpectrumPlugin::SpectrumPlugin(const clap_host* host) :
-    ClapPlugin(getDescriptor(), host) { }
+SpectrumPlugin::SpectrumPlugin(const clap_host* host) : ClapPlugin(getDescriptor(), host) { }
 
 SpectrumPlugin::~SpectrumPlugin() = default;
 
@@ -54,7 +54,8 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     return CLAP_PROCESS_CONTINUE;
 }
 
-bool SpectrumPlugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio_port_info* info) const noexcept {
+bool SpectrumPlugin::audioPortsInfo(uint32_t index, bool /*isInput*/,
+                                    clap_audio_port_info* info) const noexcept {
     if (index != 0)
         return false;
 
@@ -66,6 +67,100 @@ bool SpectrumPlugin::audioPortsInfo(uint32_t index, bool /*isInput*/, clap_audio
     info->port_type = CLAP_PORT_STEREO;
 
     return true;
+}
+
+bool SpectrumPlugin::stateSave(const clap_ostream* stream) noexcept {
+    if (! stream || ! stream->write)
+        return false;
+
+    const auto& p = mAnalyzerProcessor;
+    nlohmann::json j;
+
+    // Store all parameters in the JSON object
+    j["fftSize"] = p.fftSize();
+    j["minFrequency"] = p.minFrequency();
+    j["maxFrequency"] = p.maxFrequency();
+    j["targetNumBands"] = p.bands().size();
+    j["weightingDbPerOctave"] = p.weightingDbPerOctave();
+    j["weightingCenterFrequency"] = p.weightingCenterFrequency();
+    j["lineSmoothingFactor"] = p.lineSmoothingFactor();
+    j["windowType"] = std::string(magic_enum::enum_name(p.windowType()));
+    j["fftHopSize"] = p.fftHopSize();
+    j["attack"] = p.attackRate();
+    j["release"] = p.releaseRate();
+    j["minDb"] = p.minDb();
+
+    const auto jsonStr = j.dump();
+
+    // CLAP streams may have size limitations, so we need to write in chunks
+    const auto* buffer = jsonStr.data();
+
+    auto remaining = jsonStr.size();
+    while (remaining > 0) {
+        // Try to write remaining bytes
+        const auto written = stream->write(stream, buffer + (jsonStr.size() - remaining), remaining);
+
+        if (written < 0)
+            return false;  // Write error occurred
+
+        remaining -= written;
+    }
+
+    return true;
+}
+
+bool SpectrumPlugin::stateLoad(const clap_istream* stream) noexcept {
+    if (! stream || ! stream->read)
+        return false;
+
+    // Read the JSON string from the stream in chunks
+    constexpr auto chunkSize = 4096;
+    std::vector<char> buffer;
+    char chunk[chunkSize];
+
+    while (true) {
+        int64_t bytesRead = stream->read(stream, chunk, chunkSize);
+
+        if (bytesRead < 0)
+            return false;  // Read error
+
+        if (bytesRead == 0)
+            break;  // End of stream
+
+        buffer.insert(buffer.end(), chunk, chunk + bytesRead);
+    }
+
+    buffer.push_back('\0');  // Ensure buffer is null-terminated
+
+    try {
+        nlohmann::json j = nlohmann::json::parse(buffer.data());
+
+        auto& p = mAnalyzerProcessor;
+
+        // Apply all parameters from the loaded JSON at once
+        p.setFftSize(j["fftSize"].get<int>());
+        p.setMinFrequency(j["minFrequency"].get<double>());
+        p.setMaxFrequency(j["maxFrequency"].get<double>());
+        p.setTargetNumBands(j["targetNumBands"].get<int>());
+        p.setWeightingDbPerOctave(j["weightingDbPerOctave"].get<double>());
+        p.setWeightingCenterFrequency(j["weightingCenterFrequency"].get<double>());
+        p.setLineSmoothingFactor(j["lineSmoothingFactor"].get<double>());
+
+        const auto windowType = magic_enum::enum_cast<tb::WindowType>(j["windowType"].get<std::string>());
+        if (windowType.has_value())
+            p.setWindowType(windowType.value());
+
+        p.setFftHopSize(j["fftHopSize"].get<int>());
+        p.setAttackRate(j["attack"].get<double>());
+        p.setReleaseRate(j["release"].get<double>());
+        p.setMinDb(j["minDb"].get<double>());
+
+        return true;
+    }
+    catch (std::exception& e) {
+        std::cerr << "Spectrum: Failed to load state: " << e.what() << std::endl;
+        return false;
+    }
 }
 
 bool SpectrumPlugin::guiIsApiSupported(char const* api, bool is_floating) noexcept {

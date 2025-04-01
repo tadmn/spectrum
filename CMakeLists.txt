@@ -32,6 +32,7 @@ CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")
 CPMAddPackage("gh:tadmn/visage#677b82d19747cb2331a5bc524836685e53f1f14c")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
+CPMAddPackage("gh:nlohmann/json@3.11.3")
 
 # Visage embedded file resources
 file(GLOB_RECURSE FONT_FILES fonts/*.ttf)
@@ -48,7 +49,7 @@ target_link_libraries(${PROJECT_NAME}-impl PRIVATE
   clap-helpers clap-wrapper-extensions
   tad-bits choc farbot FastFourier
   visage EmbeddedFontResources EmbeddedIconResources
-  magic_enum
+  magic_enum nlohmann_json
 )
 
 target_compile_definitions(${PROJECT_NAME}-impl PRIVATE
