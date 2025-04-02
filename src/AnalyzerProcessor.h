@@ -9,6 +9,7 @@
 
 #include <vector>
 #include <complex>
+#include <functional>
 
 class AnalyzerProcessor {
   public:
