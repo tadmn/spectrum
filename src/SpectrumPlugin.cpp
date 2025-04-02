@@ -189,18 +189,22 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
         return true;
 
     mApp = std::make_unique<visage::ApplicationWindow>();
-    mApp->setWindowDimensions(1097, 630);
     mApp->onDraw() = [this](visage::Canvas& c) {
         c.setColor(0xff000000);
         c.fill(0, 0, mApp->width(), mApp->height());
     };
 
-    mApp->onWindowContentsResized() = [this] {
+    mApp->onWindowContentsResized() += [this] {
         _host.guiRequestResize(pluginWidth(), pluginHeight());
-        mApp->children()[0]->setBounds(0, 0, mApp->width(), mApp->height());
+    };
+
+    mApp->onResize() += [this] {
+        for (auto* child : mApp->children())
+            child->setBounds(0, 0, mApp->width(), mApp->height());
     };
 
     mApp->addChild(std::make_unique<MainFrame>(mAnalyzerProcessor));
+    mApp->setWindowDimensions(1097, 630);
 
     return true;
 }
