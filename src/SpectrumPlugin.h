@@ -3,14 +3,15 @@
 
 #include "AnalyzerProcessor.h"
 
-#include <choc_DisableAllWarnings.h>
-#include <choc_ReenableAllWarnings.h>
-
 #include <choc_SampleBuffers.h>
 #include <clap/helpers/plugin.hh>
 #include <visage/app.h>
 
+#if NDEBUG
+using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Ignore, clap::helpers::CheckingLevel::Minimal>;
+#else
 using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
+#endif
 
 namespace cb = choc::buffer;
 
