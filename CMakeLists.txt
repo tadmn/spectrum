@@ -30,7 +30,7 @@ CPMAddPackage("gh:free-audio/clap-wrapper#a610e1a0821d54f2c64d1f13fd737ba2ccf314
 CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#c38992d0f898116380121beb068fdc39f2dbd540")
-CPMAddPackage("gh:tadmn/visage#677b82d19747cb2331a5bc524836685e53f1f14c")
+CPMAddPackage("gh:tadmn/visage#fd16dcc9f80a9f72fc251e2585c5d6b9f33de1ff")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
 CPMAddPackage("gh:nlohmann/json@3.11.3")
 
