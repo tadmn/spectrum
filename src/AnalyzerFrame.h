@@ -10,18 +10,13 @@ class AnalyzerFrame : public visage::Frame {
   public:
     AnalyzerFrame(AnalyzerProcessor& p) : mAnalyzerProcessor(p) {
         setIgnoresMouseEvents(true, false);
-        mAnalyzerProcessor.onBandsChanged = [this] {
-            updateLine();
-            resized();
-        };
-
         updateLine();
     }
 
     ~AnalyzerFrame() override { }
 
     void resized() override {
-        mLine->setBounds(bounds());
+        mLine->setBounds(localBounds());
 
         // Tether the first and last points to bottom left and bottom right corners
         mLine->setXAt(0, 0);
@@ -42,7 +37,6 @@ class AnalyzerFrame : public visage::Frame {
         redraw();
     }
 
-  private:
     void updateLine() {
         const auto numPoints = mAnalyzerProcessor.spectrumLine().size() + 2;
         if (mLine != nullptr && mLine->numPoints() == numPoints)
@@ -53,9 +47,51 @@ class AnalyzerFrame : public visage::Frame {
         mLine->setFillCenter(visage::GraphLine::kBottom);
         mLine->setBounds(0, 0, width(), height());
         addChild(*mLine);
+
+        resized();
     }
 
+  private:
     AnalyzerProcessor& mAnalyzerProcessor;
 
     std::unique_ptr<visage::GraphLine> mLine;
+};
+
+class GradientOverlay : public visage::Frame {
+public:
+    GradientOverlay() {
+        setIgnoresMouseEvents(true, false);
+    }
+
+    ~GradientOverlay() override {}
+
+    void draw(visage::Canvas& c) override {
+        const auto brush = visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
+                                                 { width() / 2, 0 }, { width() / 2, height() });
+        c.setColor(brush);
+        c.fill(0, 0, width(), height());
+    }
+};
+
+class AnalyzerFrameWithGradientFade : public visage::Frame {
+public:
+    AnalyzerFrameWithGradientFade(AnalyzerProcessor& p) : mAnalyzerFrame(p) {
+        addChild(mAnalyzerFrame);
+        addChild(mGradientOverlay);
+    }
+
+    ~AnalyzerFrameWithGradientFade() override {}
+
+    void resized() override {
+        mAnalyzerFrame.setBounds(localBounds());
+        mGradientOverlay.setBounds(localBounds().trimBottom(0.54 * height()));
+    }
+
+    void updateLine() {
+        mAnalyzerFrame.updateLine();
+    }
+
+private:
+    AnalyzerFrame mAnalyzerFrame;
+    GradientOverlay mGradientOverlay;
 };

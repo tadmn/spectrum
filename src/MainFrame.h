@@ -3,32 +3,23 @@
 
 #include "AnalyzerFrame.h"
 #include "SettingsFrame.h"
+#include "AnalyzerGridFrame.h"
 #include "embedded/Icons.h"
 
 #include <visage/widgets.h>
 
-struct GradientOverlay : visage::Frame {
-    void draw(visage::Canvas& c) override {
-        const auto brush = visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
-                                                 { static_cast<float>(width()) / 2, 0 },
-                                                 { static_cast<float>(width() / 2),
-                                                   static_cast<float>(height()) });
-        c.setColor(brush);
-        c.fill(0, 0, width(), height());
-    }
-};
-
 class MainFrame : public visage::Frame {
   public:
     MainFrame(AnalyzerProcessor& p) :
+    mAnalyzerProcessor(p),
         mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size),
         mSettings(p) {
-        mSettings.setAlphaTransparency(0.66);
-        mPalette.initWithDefaults();
-        setPalette(&mPalette);
 
+        mGrid.setAlphaTransparency(0.35);
+        mSettings.setAlphaTransparency(0.66);
+
+        addChild(mGrid);
         addChild(mAnalyzer);
-        addChild(mGradientOverlay);
 
         mButton.onToggle() = [this](visage::Button*, bool on) {
             mSettings.setVisible(on);
@@ -37,14 +28,22 @@ class MainFrame : public visage::Frame {
 
         addChild(mSettings, false);
         addChild(mButton);
+
+        assert(mAnalyzerProcessor.onBandsChanged == nullptr);
+        mAnalyzerProcessor.onBandsChanged = [this] {
+            mGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+            mAnalyzer.updateLine();
+        };
     }
 
-    ~MainFrame() override { }
+    ~MainFrame() override {
+        mAnalyzerProcessor.onBandsChanged = nullptr;
+    }
 
     void resized() override {
         auto b = localBounds();
+        mGrid.setBounds(b);
         mAnalyzer.setBounds(b);
-        mGradientOverlay.setBounds(b.copy().trimBottom(0.54 * height()));
 
         b = b.trimTop(54);
         mButton.setBounds(b.trimLeft(40).reduced(4));
@@ -52,11 +51,11 @@ class MainFrame : public visage::Frame {
     }
 
   private:
-    visage::Palette mPalette;
+    AnalyzerProcessor& mAnalyzerProcessor;
 
-    AnalyzerFrame mAnalyzer;
-    GradientOverlay mGradientOverlay;
+    AnalyzerGridFrame mGrid;
+    AnalyzerFrameWithGradientFade mAnalyzer;
+
     visage::ToggleIconButton mButton;
-
     SettingsFrame mSettings;
 };
