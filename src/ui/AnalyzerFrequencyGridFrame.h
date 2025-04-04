@@ -20,13 +20,20 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
     }
 
     void draw(visage::Canvas& canvas) override {
+        canvas.setNativePixelScale();
+
+        // Setup horizontal fade in/out to transparent for aesthetics
+        const auto c0 = visage::Color(0xffffff).withAlpha(0);
+        const auto c1 = c0.withAlpha(1);
+        const auto brush = visage::Brush::linear(visage::Gradient(c0, c1, c1, c1, c1, c0),
+                                                 { 0.f, nativeHeight() / 2.f },
+                                                 { static_cast<float>(nativeWidth()), nativeHeight() / 2.f });
+
         const auto minLogFreq = std::log10(mMinFreq);
         const auto maxLogFreq = std::log10(mMaxFreq);
 
         // Find the first decade starting point (10, 100, 1000, etc.)
         const auto decadeStart = std::pow(10.f, std::ceil(minLogFreq));
-
-        canvas.setNativePixelScale();
 
         // Draw the grid lines
         for (float freq = decadeStart / 10.f; freq <= mMaxFreq; freq *= 10.0f) {
@@ -50,11 +57,11 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
 
                 if (i == 1) {
                     // Major lines at 1x, 10x, 100x, etc (decade boundaries)
-                    canvas.setColor(visage::Color(0xffffff).withAlpha(0.4));
+                    canvas.setBrush(brush.withMultipliedAlpha(0.4));
                     canvas.segment(lineX, 0, lineX, nativeHeight(), 1, false);
                 } else {
                     // Minor lines at other multiples
-                    canvas.setColor(visage::Color(0xffffff).withAlpha(0.2));
+                    canvas.setBrush(brush.withMultipliedAlpha(0.2));
                     canvas.segment(lineX, 0, lineX, nativeHeight(), 1, false);
                 }
             }
