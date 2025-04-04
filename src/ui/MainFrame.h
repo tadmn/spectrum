@@ -4,6 +4,7 @@
 #include "AnalyzerFrame.h"
 #include "AnalyzerFrequencyGridFrame.h"
 #include "AnalyzerFrequencyGridLabelsFrame.h"
+#include "AnalyzerDbGridFame.h"
 #include "SettingsFrame.h"
 #include "embedded/Icons.h"
 
@@ -19,6 +20,7 @@ class MainFrame : public visage::Frame {
         mSettings.setAlphaTransparency(0.66);
 
         addChild(mFreqGrid);
+        addChild(mDbGrid);
         addChild(mAnalyzer);
         addChild(mFreqLabels);
 
@@ -33,8 +35,9 @@ class MainFrame : public visage::Frame {
         assert(mAnalyzerProcessor.onBandsChanged == nullptr);
         mAnalyzerProcessor.onBandsChanged = [this] {
             mFreqGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
-            mAnalyzer.updateLine();
             mFreqLabels.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+            mDbGrid.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
+            mAnalyzer.updateLine();
         };
     }
 
@@ -49,6 +52,7 @@ class MainFrame : public visage::Frame {
         auto b = localBounds();
         mFreqGrid.setBounds(b);
         mAnalyzer.setBounds(b);
+        mDbGrid.setBounds(b);
 
         {
             auto b1 = b.trimTop(54);
@@ -65,6 +69,7 @@ class MainFrame : public visage::Frame {
     AnalyzerFrequencyGridFrame mFreqGrid;
     AnalyzerFrame mAnalyzer;
     AnalyzerFrequencyGridLabelsFrame mFreqLabels;
+    AnalyzerDbGridFame mDbGrid;
 
     visage::ToggleIconButton mButton;
     SettingsFrame mSettings;

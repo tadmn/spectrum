@@ -80,7 +80,7 @@ class AnalyzerProcessor {
     // "Non-realtime" parameters (i.e. they require a more hefty internal update, with buffers & the
     // band vector being resized, etc.)
     double mSampleRate = 44'100.0;
-    int mFftSize = 8'192;
+    int mFftSize = 4'096.0;
     double mMinFrequency = 15.0;
     double mMaxFrequency = 22'000.0;
     int mTargetNumBands = 320;
