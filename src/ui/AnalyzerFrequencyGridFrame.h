@@ -69,11 +69,7 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
 
         canvas.setLogicalPixelScale();
 
-        // Add a gradient fade-in & fade-out in the y-axis for aesthetics
-        canvas.setColor(visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
-                                              { width() / 2, 0.1f * height() }, { width() / 2, 0.f }));
-        canvas.fill(0, 0, width(), height());
-
+        // Add a gradient fade-out to black at the bottom for aesthetics
         canvas.setColor(visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
                                               { width() / 2, height() - (0.4f * height()) },
                                               { width() / 2, height() }));
