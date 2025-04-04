@@ -26,6 +26,8 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
         // Find the first decade starting point (10, 100, 1000, etc.)
         const auto decadeStart = std::pow(10.f, std::ceil(minLogFreq));
 
+        canvas.setNativePixelScale();
+
         // Draw the grid lines
         for (float freq = decadeStart / 10.f; freq <= mMaxFreq; freq *= 10.0f) {
             // For each decade, draw lines at 1x, 2x, 3x, ..., 9x
@@ -37,24 +39,28 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
                 if (currFreq < mMinFreq || currFreq > mMaxFreq)
                     continue;
 
-                const auto lineX = std::round(width() * tb::to0to1(std::log10(currFreq), minLogFreq,
-                                                                   maxLogFreq));
+                auto lineX = width() * tb::to0to1(std::log10(currFreq), minLogFreq, maxLogFreq);
 
                 // Ensure we're not drawing outside our canvas area
                 if (lineX < 0.f || lineX > width())
                     continue;
 
+                lineX *= canvas.dpiScale();
+                lineX = std::round(lineX);
+
                 if (i == 1) {
                     // Major lines at 1x, 10x, 100x, etc (decade boundaries)
-                    canvas.setColor(0xfeffffff);
-                    canvas.segment(lineX, 0, lineX, height(), 1, false);
+                    canvas.setColor(0xffffffff);
+                    canvas.segment(lineX, 0, lineX, nativeHeight(), 1, false);
                 } else {
                     // Minor lines at other multiples
                     canvas.setColor(0xfaffffff);
-                    canvas.segment(lineX, 0, lineX, height(), 1, false);
+                    canvas.segment(lineX, 0, lineX, nativeHeight(), 1, false);
                 }
             }
         }
+
+        canvas.setLogicalPixelScale();
 
         // Add a gradient fade-in & fade-out in the y-axis for aesthetics
         {

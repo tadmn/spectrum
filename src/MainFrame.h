@@ -16,7 +16,7 @@ class MainFrame : public visage::Frame {
         mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size),
         mSettings(p) {
 
-        mGrid.setAlphaTransparency(0.35);
+        mGrid.setAlphaTransparency(0.45);
         mSettings.setAlphaTransparency(0.66);
 
         addChild(mGrid);
