@@ -57,18 +57,16 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
         }
 
         // Add a gradient fade-in & fade-out in the y-axis for aesthetics
-        const auto gradientFade = height() / 4;
-
         {
             const auto brush = visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
-                                                 { width() / 2, gradientFade }, { width() / 2, 0.f });
+                                                 { width() / 2, 0.25f * height() }, { width() / 2, 0.f });
             canvas.setColor(brush);
             canvas.fill(0, 0, width(), height());
         }
 
         {
             const auto brush = visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
-                                                 { width() / 2, height() - (gradientFade) }, { width() / 2, height() });
+                                                 { width() / 2, height() - (0.4f * height()) }, { width() / 2, height() });
             canvas.setColor(brush);
             canvas.fill(0, 0, width(), height());
         }
