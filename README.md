@@ -1,7 +1,7 @@
 # Spectrum
 Free, open-source, liberally-licensed, 2-dimensional audio spectrum analyzer.
 
-The `Spectrum` plugin used the [visage](https://github.com/VitalAudio/visage) library to render the analyzer.
+The `Spectrum` plugin uses the [visage](https://github.com/VitalAudio/visage) library to render the analyzer.
 
 If you want to use a different graphics library, slot [AnalyzerProcessor](src/AnalyzerProcessor.h) into your audio
 pipeline. It will output vectors of X/Y coordinates (on the range [0, 1]) that can then be sent to your graphics
