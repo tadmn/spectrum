@@ -4,18 +4,18 @@
 #include <visage/graphics.h>
 #include <tb_Math.h>
 
-class AnalyzerGridFrame : public visage::Frame {
+class AnalyzerFrequencyGridFrame : public visage::Frame {
   public:
-    AnalyzerGridFrame() {
+    AnalyzerFrequencyGridFrame() {
         setIgnoresMouseEvents(true, false);
     }
 
-    ~AnalyzerGridFrame() override { }
+    ~AnalyzerFrequencyGridFrame() override { }
 
-    void setFrequencyRange(float min, float max) {
-        assert(min > 0.f && max > min);
-        mMinFreq = min;
-        mMaxFreq = max;
+    void setFrequencyRange(float minFreq, float maxFreq) {
+        assert(minFreq > 0.f && maxFreq > minFreq);
+        mMinFreq = minFreq;
+        mMaxFreq = maxFreq;
         redraw();
     }
 
@@ -46,7 +46,7 @@ class AnalyzerGridFrame : public visage::Frame {
 
                 if (i == 1) {
                     // Major lines at 1x, 10x, 100x, etc (decade boundaries)
-                    canvas.setColor(visage::Color(0xfeffffff));
+                    canvas.setColor(0xfeffffff);
                     canvas.segment(lineX, 0, lineX, height(), 1, false);
                 } else {
                     // Minor lines at other multiples

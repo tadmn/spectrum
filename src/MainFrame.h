@@ -2,8 +2,9 @@
 #pragma once
 
 #include "AnalyzerFrame.h"
+#include "AnalyzerFrequencyGridFrame.h"
+#include "AnalyzerFrequencyGridLabelsFrame.h"
 #include "SettingsFrame.h"
-#include "AnalyzerGridFrame.h"
 #include "embedded/Icons.h"
 
 #include <visage/widgets.h>
@@ -20,6 +21,7 @@ class MainFrame : public visage::Frame {
 
         addChild(mGrid);
         addChild(mAnalyzer);
+        addChild(mFreqLabels);
 
         mButton.onToggle() = [this](visage::Button*, bool on) {
             mSettings.setVisible(on);
@@ -33,11 +35,15 @@ class MainFrame : public visage::Frame {
         mAnalyzerProcessor.onBandsChanged = [this] {
             mGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
             mAnalyzer.updateLine();
+            mFreqLabels.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
         };
     }
 
-    ~MainFrame() override {
-        mAnalyzerProcessor.onBandsChanged = nullptr;
+    ~MainFrame() override { mAnalyzerProcessor.onBandsChanged = nullptr; }
+
+    void draw(visage::Canvas& canvas) override {
+        canvas.setColor(0xff1e1f22);
+        canvas.fill(0, 0, width(), height());
     }
 
     void resized() override {
@@ -45,16 +51,21 @@ class MainFrame : public visage::Frame {
         mGrid.setBounds(b);
         mAnalyzer.setBounds(b);
 
-        b = b.trimTop(54);
-        mButton.setBounds(b.trimLeft(40).reduced(4));
-        mSettings.setBounds(b.reduced(0, 3, 3, 3));
+        {
+            auto b1 = b.trimTop(54);
+            mButton.setBounds(b1.trimLeft(40).reduced(4));
+            mSettings.setBounds(b1.reduced(0, 3, 3, 3));
+        }
+
+        mFreqLabels.setBounds(b.trimBottom(25));
     }
 
   private:
     AnalyzerProcessor& mAnalyzerProcessor;
 
-    AnalyzerGridFrame mGrid;
+    AnalyzerFrequencyGridFrame mGrid;
     AnalyzerFrameWithGradientFade mAnalyzer;
+    AnalyzerFrequencyGridLabelsFrame mFreqLabels;
 
     visage::ToggleIconButton mButton;
     SettingsFrame mSettings;

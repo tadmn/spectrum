@@ -9,6 +9,7 @@
 class AnalyzerFrame : public visage::Frame {
   public:
     AnalyzerFrame(AnalyzerProcessor& p) : mAnalyzerProcessor(p) {
+        mPalette.initWithDefaults();
         setIgnoresMouseEvents(true, false);
         updateLine();
     }
@@ -16,9 +17,26 @@ class AnalyzerFrame : public visage::Frame {
     ~AnalyzerFrame() override { }
 
     void resized() override {
-        mLine->setBounds(localBounds());
+        // Set line colors, including gradient fade-out for aesthetics
+        {
+            const visage::Color lineColor(0xffaa88ff);
+            const visage::Color fillColor(0x669f88ff);
+            const float fadeOutStart = 0.54 * height();
+            const auto x = width() / 2;
+            const auto brush = visage::Brush::linear(visage::Gradient(lineColor, lineColor.withAlpha(0)),
+                                                     { x, fadeOutStart }, { x, height() });
+
+            mPalette.setColor(visage::GraphLine::LineColor,
+                              visage::Brush::linear(visage::Gradient(lineColor, lineColor.withAlpha(0)),
+                                                    { x, fadeOutStart }, { x, height() }));
+
+            mPalette.setColor(visage::GraphLine::LineFillColor,
+                              visage::Brush::linear(visage::Gradient(fillColor, fillColor.withAlpha(0)),
+                                                    { x, fadeOutStart }, { x, height() }));
+        }
 
         // Tether the first and last points to bottom left and bottom right corners
+        mLine->setBounds(localBounds());
         mLine->setXAt(0, 0);
         mLine->setYAt(0, mLine->height());
         mLine->setXAt(mLine->numPoints() - 1, mLine->width());
@@ -43,6 +61,7 @@ class AnalyzerFrame : public visage::Frame {
             return;
 
         mLine = std::make_unique<visage::GraphLine>(numPoints);
+        mLine->setPalette(&mPalette);
         mLine->setFill(true);
         mLine->setFillCenter(visage::GraphLine::kBottom);
         mLine->setBounds(0, 0, width(), height());
@@ -54,6 +73,7 @@ class AnalyzerFrame : public visage::Frame {
   private:
     AnalyzerProcessor& mAnalyzerProcessor;
 
+    visage::Palette mPalette;
     std::unique_ptr<visage::GraphLine> mLine;
 };
 
@@ -77,7 +97,7 @@ class AnalyzerFrameWithGradientFade : public visage::Frame {
 public:
     AnalyzerFrameWithGradientFade(AnalyzerProcessor& p) : mAnalyzerFrame(p) {
         addChild(mAnalyzerFrame);
-        addChild(mGradientOverlay);
+        // addChild(mGradientOverlay);
     }
 
     ~AnalyzerFrameWithGradientFade() override {}
