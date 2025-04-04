@@ -19,17 +19,17 @@ class AnalyzerFrequencyGridLabelsFrame : public visage::Frame {
     }
 
     void draw(visage::Canvas& canvas) override {
-        constexpr std::array<std::pair<float, const char*>, 10> freqLabels { { { 20.f, "20" },
-                                                                               { 50.f, "50" },
-                                                                               { 100.f, "100" },
-                                                                               { 200.f, "200" },
-                                                                               { 500.f, "500" },
-                                                                               { 1000.f, "1k" },
-                                                                               { 2000.f, "2k" },
-                                                                               { 5000.f, "5k" },
-                                                                               { 10000.f, "10k" },
-                                                                               { 20000.f,
-                                                                                 "20k" } } };
+        constexpr std::array<std::pair<float, const char*>, 10> kFreqLabels { { { 20.f, "20" },
+                                                                                { 50.f, "50" },
+                                                                                { 100.f, "100" },
+                                                                                { 200.f, "200" },
+                                                                                { 500.f, "500" },
+                                                                                { 1000.f, "1k" },
+                                                                                { 2000.f, "2k" },
+                                                                                { 5000.f, "5k" },
+                                                                                { 10000.f, "10k" },
+                                                                                { 20000.f,
+                                                                                  "20k" } } };
 
         canvas.setColor(0x80ffffff);
 
@@ -39,7 +39,7 @@ class AnalyzerFrequencyGridLabelsFrame : public visage::Frame {
         const auto maxLogFreq = std::log10(mMaxFreq);
 
         // Draw labels for frequencies that are in the visible range
-        for (const auto& freqLabel : freqLabels) {
+        for (const auto& freqLabel : kFreqLabels) {
             if (freqLabel.first >= mMinFreq && freqLabel.first <= mMaxFreq) {
                 float labelX = width() * tb::to0to1(std::log10(freqLabel.first), minLogFreq, maxLogFreq);
 

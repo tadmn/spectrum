@@ -1,12 +1,12 @@
 
 #pragma once
 
-#include "AnalyzerProcessor.h"
+#include "../AnalyzerProcessor.h"
 #include "embedded/Fonts.h"
 
-#include <visage/widgets.h>
-#include <visage/ui.h>
 #include <magic_enum/magic_enum.hpp>
+#include <visage/ui.h>
+#include <visage/widgets.h>
 
 template<typename EnumType>
 class LabeledPopupMenu : public visage::Frame {

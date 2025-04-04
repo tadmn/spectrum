@@ -1,7 +1,7 @@
 
 #include "SpectrumPlugin.h"
 
-#include "MainFrame.h"
+#include "ui/MainFrame.h"
 
 #include <clap/helpers/plugin.hxx>
 #include <nlohmann/json.hpp>

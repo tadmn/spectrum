@@ -1,6 +1,5 @@
 
 #include "AnalyzerProcessor.h"
-#include "LiveValue.h"
 
 #include <numeric>
 #include <tb_Math.h>

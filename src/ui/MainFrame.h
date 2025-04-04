@@ -16,10 +16,9 @@ class MainFrame : public visage::Frame {
         mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size),
         mSettings(p) {
 
-        mGrid.setAlphaTransparency(0.45);
         mSettings.setAlphaTransparency(0.66);
 
-        addChild(mGrid);
+        addChild(mFreqGrid);
         addChild(mAnalyzer);
         addChild(mFreqLabels);
 
@@ -33,7 +32,7 @@ class MainFrame : public visage::Frame {
 
         assert(mAnalyzerProcessor.onBandsChanged == nullptr);
         mAnalyzerProcessor.onBandsChanged = [this] {
-            mGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+            mFreqGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
             mAnalyzer.updateLine();
             mFreqLabels.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
         };
@@ -48,7 +47,7 @@ class MainFrame : public visage::Frame {
 
     void resized() override {
         auto b = localBounds();
-        mGrid.setBounds(b);
+        mFreqGrid.setBounds(b);
         mAnalyzer.setBounds(b);
 
         {
@@ -63,8 +62,8 @@ class MainFrame : public visage::Frame {
   private:
     AnalyzerProcessor& mAnalyzerProcessor;
 
-    AnalyzerFrequencyGridFrame mGrid;
-    AnalyzerFrameWithGradientFade mAnalyzer;
+    AnalyzerFrequencyGridFrame mFreqGrid;
+    AnalyzerFrame mAnalyzer;
     AnalyzerFrequencyGridLabelsFrame mFreqLabels;
 
     visage::ToggleIconButton mButton;

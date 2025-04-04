@@ -50,11 +50,11 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
 
                 if (i == 1) {
                     // Major lines at 1x, 10x, 100x, etc (decade boundaries)
-                    canvas.setColor(0xffffffff);
+                    canvas.setColor(visage::Color(0xffffff).withAlpha(0.4));
                     canvas.segment(lineX, 0, lineX, nativeHeight(), 1, false);
                 } else {
                     // Minor lines at other multiples
-                    canvas.setColor(0xfaffffff);
+                    canvas.setColor(visage::Color(0xffffff).withAlpha(0.2));
                     canvas.segment(lineX, 0, lineX, nativeHeight(), 1, false);
                 }
             }
@@ -63,19 +63,14 @@ class AnalyzerFrequencyGridFrame : public visage::Frame {
         canvas.setLogicalPixelScale();
 
         // Add a gradient fade-in & fade-out in the y-axis for aesthetics
-        {
-            const auto brush = visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
-                                                 { width() / 2, 0.25f * height() }, { width() / 2, 0.f });
-            canvas.setColor(brush);
-            canvas.fill(0, 0, width(), height());
-        }
+        canvas.setColor(visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
+                                              { width() / 2, 0.25f * height() }, { width() / 2, 0.f }));
+        canvas.fill(0, 0, width(), height());
 
-        {
-            const auto brush = visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
-                                                 { width() / 2, height() - (0.4f * height()) }, { width() / 2, height() });
-            canvas.setColor(brush);
-            canvas.fill(0, 0, width(), height());
-        }
+        canvas.setColor(visage::Brush::linear(visage::Gradient(0x00000000, 0xff000000),
+                                              { width() / 2, height() - (0.4f * height()) },
+                                              { width() / 2, height() }));
+        canvas.fill(0, 0, width(), height());
     }
 
   private:
