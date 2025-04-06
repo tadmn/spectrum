@@ -44,7 +44,7 @@ class MainFrame : public visage::Frame {
     ~MainFrame() override { mAnalyzerProcessor.onBandsChanged = nullptr; }
 
     void draw(visage::Canvas& canvas) override {
-        canvas.setColor(0xff1e1f22);
+        canvas.setColor(0xff1b1f23);
         canvas.fill(0, 0, width(), height());
     }
 
