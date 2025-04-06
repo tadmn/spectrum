@@ -56,7 +56,7 @@ class MainFrame : public visage::Frame {
 
         {
             auto b1 = b.trimTop(54);
-            mButton.setBounds(b1.trimLeft(40).reduced(4));
+            mButton.setBounds(b1.trimLeft(40).reduced(7));
             mSettings.setBounds(b1.reduced(0, 3, 3, 3));
         }
 
