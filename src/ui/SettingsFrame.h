@@ -91,6 +91,7 @@ class LabeledTextEditor : public visage::Frame {
 class SettingsFrame : public visage::Frame {
   public:
     SettingsFrame(AnalyzerProcessor& p) :
+        mProcessor(p),
         mNumBands("Bands", [&p](const visage::String& t) { p.setTargetNumBands(t.toInt()); }),
         mFftSize("FFT Size", [&p](const visage::String& t) { p.setFftSize(t.toInt()); }),
         mMinFreq("Min Freq", [&p](const visage::String& t) { p.setMinFrequency(t.toFloat()); }),
@@ -121,26 +122,26 @@ class SettingsFrame : public visage::Frame {
         addChild(mSmoothingFactor);
         addChild(mWindowTypeMenu);
 
-        auto onParametersChanged = [this, &p] {
-            mNumBands.setValue(p.bands().size());
-            mFftSize.setValue(p.fftSize());
-            mFftHopSize.setValue(p.fftHopSize());
-            mMinFreq.setValue(p.minFrequency());
-            mMaxFreq.setValue(p.maxFrequency());
-            mAttack.setValue(p.attackRate());
-            mRelease.setValue(p.releaseRate());
-            mDbPerOctave.setValue(p.weightingDbPerOctave());
-            mCenterFrequency.setValue(p.weightingCenterFrequency());
-            mMinDb.setValue(p.minDb());
-            mSmoothingFactor.setValue(p.lineSmoothingFactor());
-            mWindowTypeMenu.setValue(p.windowType());
-        };
-
-        onParametersChanged();  // Set initial values
-        p.onParametersChanged = std::move(onParametersChanged);
+        updateSettings(); // Set initial values
     }
 
     ~SettingsFrame() override { }
+
+    void updateSettings() {
+        const auto& p = mProcessor;
+        mNumBands.setValue(p.bands().size());
+        mFftSize.setValue(p.fftSize());
+        mFftHopSize.setValue(p.fftHopSize());
+        mMinFreq.setValue(p.minFrequency());
+        mMaxFreq.setValue(p.maxFrequency());
+        mAttack.setValue(p.attackRate());
+        mRelease.setValue(p.releaseRate());
+        mDbPerOctave.setValue(p.weightingDbPerOctave());
+        mCenterFrequency.setValue(p.weightingCenterFrequency());
+        mMinDb.setValue(p.minDb());
+        mSmoothingFactor.setValue(p.lineSmoothingFactor());
+        mWindowTypeMenu.setValue(p.windowType());
+    }
 
     void draw(visage::Canvas& c) override {
         c.setColor(0xffffffff);
@@ -159,6 +160,8 @@ class SettingsFrame : public visage::Frame {
     }
 
   private:
+    AnalyzerProcessor& mProcessor;
+
     LabeledTextEditor mNumBands, mFftSize, mMinFreq, mMaxFreq, mFftHopSize, mAttack, mRelease,
         mDbPerOctave, mCenterFrequency, mMinDb, mSmoothingFactor;
     LabeledPopupMenu<tb::WindowType> mWindowTypeMenu;

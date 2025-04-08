@@ -3,7 +3,8 @@
 
 #include "Common.h"
 #include "GridFrame.h"
-#include "AnalyzerFrequencyGridLabelsFrame.h"
+#include "FrequencyGridLabelsFrame.h"
+#include "DbGridLabelsFrame.h"
 #include "AnalyzerFrame.h"
 #include "SettingsFrame.h"
 #include "embedded/Icons.h"
@@ -22,6 +23,7 @@ class MainFrame : public visage::Frame {
         addChild(mGrid);
         addChild(mAnalyzer);
         addChild(mFreqLabels);
+        addChild(mDbLabels);
 
         mButton.onToggle() = [this](visage::Button*, bool on) {
             mSettings.setVisible(on);
@@ -31,16 +33,30 @@ class MainFrame : public visage::Frame {
         addChild(mSettings, false);
         addChild(mButton);
 
-        assert(mAnalyzerProcessor.onBandsChanged == nullptr);
-        mAnalyzerProcessor.onBandsChanged = [this] {
-            mGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
-            mGrid.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
-            mFreqLabels.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
-            mAnalyzer.updateLine();
-        };
+        mAnalyzerProcessor.onBandsChanged = [this] { bandsChanged(); };
+        mAnalyzerProcessor.onParametersChanged = [this] { parametersChanged(); };
+
+        // Set initial settings
+        bandsChanged();
+        parametersChanged();
     }
 
-    ~MainFrame() override { mAnalyzerProcessor.onBandsChanged = nullptr; }
+    ~MainFrame() override {
+        mAnalyzerProcessor.onBandsChanged = nullptr;
+        mAnalyzerProcessor.onParametersChanged = nullptr;
+    }
+
+    void bandsChanged() {
+        mGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+        mFreqLabels.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+        mAnalyzer.updateLine();
+    }
+
+    void parametersChanged() {
+        mSettings.updateSettings();
+        mGrid.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
+        mDbLabels.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
+    }
 
     void draw(visage::Canvas& canvas) override {
         canvas.setColor(common::backgroundColor());
@@ -51,6 +67,8 @@ class MainFrame : public visage::Frame {
         auto b = localBounds();
         mGrid.setBounds(b);
         mAnalyzer.setBounds(b);
+
+        mDbLabels.setBounds(visage::Bounds(b).trimRight(42));
 
         {
             auto b1 = b.trimTop(54);
@@ -67,6 +85,7 @@ class MainFrame : public visage::Frame {
     GridFrame mGrid;
     AnalyzerFrame mAnalyzer;
     AnalyzerFrequencyGridLabelsFrame mFreqLabels;
+    DbGridLabelsFrame mDbLabels;
 
     visage::ToggleIconButton mButton;
     SettingsFrame mSettings;

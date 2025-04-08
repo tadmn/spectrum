@@ -40,6 +40,9 @@ class AnalyzerProcessor {
     void setMaxFrequency(double maxFreq);
     double maxFrequency() const noexcept { return mMaxFrequency; }
 
+    void setMinDb(double minDb);
+    double minDb() const noexcept { return mMinDb.load(std::memory_order_relaxed); }
+
     void setWeightingDbPerOctave(double dbPerOctave);
     double weightingDbPerOctave() const noexcept;
 
@@ -60,9 +63,6 @@ class AnalyzerProcessor {
 
     void setReleaseRate(double releaseRate);
     double releaseRate() const noexcept { return mRelease.load(std::memory_order_relaxed); }
-
-    void setMinDb(double minDb);
-    double minDb() const noexcept { return mMinDb.load(std::memory_order_relaxed); }
 
     void process(choc::buffer::ChannelArrayView<float> audio);
     void process(double deltaTimeSeconds);

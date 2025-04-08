@@ -3,8 +3,8 @@
 
 #include "embedded/Fonts.h"
 
-#include <tb_Math.h>
 #include <visage/graphics.h>
+#include <tb_Math.h>
 
 class AnalyzerFrequencyGridLabelsFrame : public visage::Frame {
   public:
