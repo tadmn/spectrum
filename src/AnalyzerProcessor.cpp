@@ -1,6 +1,7 @@
 
 #include "AnalyzerProcessor.h"
 
+#include <numbers>
 #include <numeric>
 #include <tb_Math.h>
 
@@ -249,7 +250,7 @@ void AnalyzerProcessor::updateBands() {
         // First generate a sinusoid at the weighting center frequency
         std::vector<float> signal(mFftSize);
         for (int i = 0; i < signal.size(); ++i) {
-            auto sample = std::sin(2 * M_PI * mWeightingCenterFrequency * (i / mSampleRate));;
+            auto sample = std::sin(2 * std::numbers::pi * mWeightingCenterFrequency * (i / mSampleRate));
             sample *= mWindow[i]; // Make sure to apply window as that can affect normalization
             signal[i] = sample;
         }

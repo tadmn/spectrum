@@ -17,7 +17,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-CPMAddPackage("gh:tadmn/tad-bits#dead88c4c2b2f7cd92182170a2389b64e3fe6e3a")
+CPMAddPackage("gh:tadmn/tad-bits#ddde9032a1eebad13a02e38beae0291814733219")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
