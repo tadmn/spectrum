@@ -238,7 +238,7 @@ void AnalyzerProcessor::updateBands() {
 
     mWindow = tb::window<float>(mWindowType, mFftSize);
     mFifoBuffer = std::make_unique<tb::FifoBuffer<float>>(1, mFftSize);
-    mFftInBuffer.resize({ .numChannels = 1, .numFrames = static_cast<uint>(mFftSize) });
+    mFftInBuffer.resize({ .numChannels = 1, .numFrames = static_cast<uint32_t>(mFftSize) });
     mFft = std::make_unique<FastFourier>(mFftSize);
     mFftComplexOutput = std::make_unique<RealtimeObject>(std::vector<std::complex<float>>(numBins));
 
