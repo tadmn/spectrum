@@ -1,4 +1,4 @@
-name: Build macOS Release
+name: Build macOS and Windows Release
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-macos:
     runs-on: macos-latest
 
     steps:
@@ -19,6 +19,32 @@ jobs:
         run: |
           brew update
           brew install cmake ninja
+
+      - name: Create build directory
+        run: mkdir -p build
+
+      - name: Configure CMake
+        working-directory: ./build
+        run: cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_SANITIZER=OFF
+
+      - name: Build spectrum_clap target
+        working-directory: ./build
+        run: cmake --build . --target spectrum_clap --config Release
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.3.1
+
+      - name: Install CMake and Ninja
+        uses: lukka/get-cmake@latest
 
       - name: Create build directory
         run: mkdir -p build
