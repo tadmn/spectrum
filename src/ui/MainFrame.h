@@ -1,10 +1,10 @@
 
 #pragma once
 
-#include "AnalyzerFrame.h"
-#include "AnalyzerFrequencyGridFrame.h"
+#include "Common.h"
+#include "GridFrame.h"
 #include "AnalyzerFrequencyGridLabelsFrame.h"
-#include "AnalyzerDbGridFame.h"
+#include "AnalyzerFrame.h"
 #include "SettingsFrame.h"
 #include "embedded/Icons.h"
 
@@ -19,8 +19,7 @@ class MainFrame : public visage::Frame {
 
         mSettings.setAlphaTransparency(0.66);
 
-        addChild(mFreqGrid);
-        addChild(mDbGrid);
+        addChild(mGrid);
         addChild(mAnalyzer);
         addChild(mFreqLabels);
 
@@ -34,9 +33,9 @@ class MainFrame : public visage::Frame {
 
         assert(mAnalyzerProcessor.onBandsChanged == nullptr);
         mAnalyzerProcessor.onBandsChanged = [this] {
-            mFreqGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+            mGrid.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
+            mGrid.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
             mFreqLabels.setFrequencyRange(mAnalyzerProcessor.minFrequency(), mAnalyzerProcessor.maxFrequency());
-            mDbGrid.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
             mAnalyzer.updateLine();
         };
     }
@@ -44,15 +43,14 @@ class MainFrame : public visage::Frame {
     ~MainFrame() override { mAnalyzerProcessor.onBandsChanged = nullptr; }
 
     void draw(visage::Canvas& canvas) override {
-        canvas.setColor(0xff1b1f23);
+        canvas.setColor(common::backgroundColor());
         canvas.fill(0, 0, width(), height());
     }
 
     void resized() override {
         auto b = localBounds();
-        mFreqGrid.setBounds(b);
+        mGrid.setBounds(b);
         mAnalyzer.setBounds(b);
-        mDbGrid.setBounds(b);
 
         {
             auto b1 = b.trimTop(54);
@@ -66,10 +64,9 @@ class MainFrame : public visage::Frame {
   private:
     AnalyzerProcessor& mAnalyzerProcessor;
 
-    AnalyzerFrequencyGridFrame mFreqGrid;
+    GridFrame mGrid;
     AnalyzerFrame mAnalyzer;
     AnalyzerFrequencyGridLabelsFrame mFreqLabels;
-    AnalyzerDbGridFame mDbGrid;
 
     visage::ToggleIconButton mButton;
     SettingsFrame mSettings;
