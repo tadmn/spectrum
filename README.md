@@ -3,18 +3,17 @@ Free, open-source, liberally-licensed, 2-dimensional audio spectrum analyzer.
 
 The `Spectrum` plugin uses the [visage](https://github.com/VitalAudio/visage) library to render the analyzer.
 
+Currently only macOS & Windows(x86_64) are supported.
+
 If you want to use a different graphics library, slot [AnalyzerProcessor](src/AnalyzerProcessor.h) into your audio
 pipeline. It will output vectors of X/Y coordinates (on the range [0, 1]) that can then be sent to your graphics
 layer. See the source code documentation for examples/tips on how to do this.
 
 ## Build Requirements
-### macOS
-```
-brew install cmake
-brew install ninja
-```
+### Windows (x86_64)
+You will need to follow the instructions at https://github.com/tadmn/FastFourier to install the Intel IPP library files.
 
-## Building
+## Example Build on macOS
 ```
 mkdir build
 cd build
@@ -24,7 +23,7 @@ ninja
 At the end of the build process (for both `Debug` & `Release` builds), the CLAP plugin will be automatically installed
 to the location:
 ```
-macOS: ~/Library/Audio/Plug-Ins/CLAP/spectrum.clap
+~/Library/Audio/Plug-Ins/CLAP/spectrum.clap
 ```
 
 ## What about AU & VST3?
