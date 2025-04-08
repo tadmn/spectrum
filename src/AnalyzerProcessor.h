@@ -5,7 +5,7 @@
 #include <tb_Interpolation.h>
 #include <tb_Windowing.h>
 #include <farbot/RealtimeObject.hpp>
-#include <FastFourier/FastFourier.h>
+#include <FastFourier.h>
 
 #include <vector>
 #include <complex>

@@ -60,7 +60,7 @@ class AnalyzerFrame : public visage::Frame {
         if (mLine != nullptr && mLine->numPoints() == numPoints)
             return;
 
-        mLine = std::make_unique<visage::GraphLine>(numPoints);
+        mLine = std::make_unique<visage::GraphLine>(static_cast<int>(numPoints));
         mLine->setPalette(&mPalette);
         mLine->setFill(true);
         mLine->setFillCenter(visage::GraphLine::kBottom);
