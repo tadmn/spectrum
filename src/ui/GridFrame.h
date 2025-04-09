@@ -15,14 +15,14 @@ public:
   ~GridFrame() override { }
 
   void setFrequencyRange(float minFreq, float maxFreq) {
-    assert(minFreq > 0.f && minFreq < maxFreq);
+    tb_assert(minFreq > 0.f && minFreq < maxFreq);
     mMinFreq = minFreq;
     mMaxFreq = maxFreq;
     redraw();
   }
 
   void setDbRange(float minDb, float maxDb) {
-    assert(minDb < maxDb);
+    tb_assert(minDb < maxDb);
     mMinDb = minDb;
     mMaxDb = maxDb;
     redraw();
@@ -60,7 +60,7 @@ private:
             // For each decade, draw lines at 1x, 2x, 3x, ..., 9x
             for (int i = 1; i < 10; i++) {
                 const auto currFreq = i * freq;
-                assert(currFreq >= 0.f);
+                tb_assert(currFreq >= 0.f);
 
                 // Skip frequencies outside our range
                 if (currFreq < mMinFreq || currFreq > mMaxFreq)

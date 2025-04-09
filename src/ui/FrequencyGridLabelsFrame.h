@@ -12,7 +12,7 @@ class AnalyzerFrequencyGridLabelsFrame : public visage::Frame {
     ~AnalyzerFrequencyGridLabelsFrame() override { }
 
     void setFrequencyRange(float minFreq, float maxFreq) {
-        assert(minFreq > 0.f && maxFreq > minFreq);
+        tb_assert(minFreq > 0.f && maxFreq > minFreq);
         mMinFreq = minFreq;
         mMaxFreq = maxFreq;
         redraw();

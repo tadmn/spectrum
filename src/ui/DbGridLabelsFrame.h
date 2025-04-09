@@ -13,7 +13,7 @@ class DbGridLabelsFrame : public visage::Frame {
     ~DbGridLabelsFrame() override { }
 
     void setDbRange(float minDb, float maxDb) {
-        assert(minDb < maxDb);
+        tb_assert(minDb < maxDb);
         mMinDb = minDb;
         mMaxDb = maxDb;
         redraw();

@@ -287,7 +287,7 @@ void AnalyzerProcessor::updateBands() {
             continue;
 
         auto bandIndex = static_cast<int>((std::log10(freq) - logMinFreq) / logDisplayStep);
-        assert(bandIndex >= 0 && bandIndex < mTargetNumBands);
+        tb_assert(bandIndex >= 0 && bandIndex < mTargetNumBands);
         bandIndex = std::clamp(bandIndex, 0, mTargetNumBands - 1);
 
         mBands[bandIndex].bins.push_back(i);

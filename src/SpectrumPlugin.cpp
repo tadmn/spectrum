@@ -45,14 +45,14 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
         mAnalyzerProcessor.processAudio(in.getFirstChannels(1));
     } else if (in.getNumChannels() == 2) {
         // Average the two input channels into a single buffer to be processed
-        assert(mStereoMixBuffer.getNumFrames() >= in.getNumFrames());
+        tb_assert(mStereoMixBuffer.getNumFrames() >= in.getNumFrames());
         auto mix = mStereoMixBuffer.getStart(in.getNumFrames());
         copy(mix, in.getChannel(0));
         add(mix, in.getChannel(1));
         applyGain(mix, 0.5f);
         mAnalyzerProcessor.processAudio(mix);
     } else {
-        assert(false); // Unsupported channel count
+        tb_assert(false); // Unsupported channel count
         return CLAP_PROCESS_ERROR;
     }
 
