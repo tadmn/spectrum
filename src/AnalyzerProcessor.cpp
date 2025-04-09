@@ -204,7 +204,7 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
         // Convert energy to dB
         double dB = minDb;
         if (bandEnergy > 0.0)
-            dB = 10.0 * std::log10(bandEnergy);
+            dB = std::max(minDb, 10.0 * std::log10(bandEnergy));
 
         // Calculate ballistics
         {
