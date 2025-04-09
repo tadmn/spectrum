@@ -15,7 +15,7 @@ class AnalyzerProcessor {
   public:
     struct Band {
         std::vector<int> bins = {};
-        double dB = -100.0;
+        float dB = -100.f;
     };
 
     AnalyzerProcessor();
@@ -103,7 +103,7 @@ class AnalyzerProcessor {
 
     std::mutex mMutex;
 
-    std::vector<double> mBinWeights;
+    std::vector<float> mBinWeights;
     std::vector<Band> mBands;
 
     std::vector<tb::Point> mBandsLine;
