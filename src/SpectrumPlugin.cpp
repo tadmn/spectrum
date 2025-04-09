@@ -27,8 +27,8 @@ SpectrumPlugin::SpectrumPlugin(const clap_host* host) : ClapPlugin(getDescriptor
 
 SpectrumPlugin::~SpectrumPlugin() = default;
 
-bool SpectrumPlugin::activate(double sampleRate, uint32_t /*minFrameCount*/,
-                              uint32_t /*maxFrameCount*/) noexcept {
+bool SpectrumPlugin::activate(double sampleRate, uint32_t /*minFrames*/, uint32_t maxFrames) noexcept {
+    mStereoMixBuffer.resize({.numChannels = 1, .numFrames = maxFrames});
     mAnalyzerProcessor.setSampleRate(sampleRate);
     return true;
 }
@@ -41,14 +41,27 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    mAnalyzerProcessor.processAudio(in.getFirstChannels(1));
+    if (in.getNumChannels() == 1) {
+        mAnalyzerProcessor.processAudio(in.getFirstChannels(1));
+    } else if (in.getNumChannels() == 2) {
+        // Average the two input channels into a single buffer to be processed
+        assert(mStereoMixBuffer.getNumFrames() >= in.getNumFrames());
+        auto mix = mStereoMixBuffer.getStart(in.getNumFrames());
+        copy(mix, in.getChannel(0));
+        add(mix, in.getChannel(1));
+        applyGain(mix, 0.5f);
+        mAnalyzerProcessor.processAudio(mix);
+    } else {
+        assert(false); // Unsupported channel count
+        return CLAP_PROCESS_ERROR;
+    }
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {
-        cb::copy(cb::createChannelArrayView(process->audio_outputs->data32,
-                                            process->audio_outputs->channel_count, process->frames_count),
-                 cb::createChannelArrayView(process->audio_inputs->data32,
-                                            process->audio_inputs->channel_count, process->frames_count));
+        copy(cb::createChannelArrayView(process->audio_outputs->data32,
+                                        process->audio_outputs->channel_count, process->frames_count),
+             cb::createChannelArrayView(process->audio_inputs->data32,
+                                        process->audio_inputs->channel_count, process->frames_count));
     }
 
     return CLAP_PROCESS_CONTINUE;

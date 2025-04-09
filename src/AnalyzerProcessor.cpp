@@ -149,14 +149,14 @@ void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio
     // changes are made, this has a small potential to briefly block while the OS notifies
     // the main thread on the unlock call to the mutex
     const std::unique_lock lock(mMutex, std::try_to_lock);
-    if (!lock.owns_lock())
-        return;  // Try to avoid blocking the audio thread as much as possible
+    if (! lock.owns_lock())
+        return; // Try to avoid blocking the audio thread as much as possible
 
     while (audio.getNumFrames() > 0) {
         audio = mFifoBuffer->push(audio);
         if (mFifoBuffer->isFull()) {
-            // Make a copy of the accumulated samples, so that when we window them we don't affect the overlapping
-            // samples in the next chunk
+            // Make a copy of the accumulated samples, so that when we window them we don't affect
+            // the overlapping samples in the next chunk
             copy(mFftInBuffer, mFifoBuffer->getBuffer());
 
             // Apply windowing

@@ -60,6 +60,7 @@ class SpectrumPlugin : public ClapPlugin {
     int pluginHeight() const;
     void setPluginDimensions(int width, int height);
 
+    choc::buffer::ChannelArrayBuffer<float> mStereoMixBuffer;
     AnalyzerProcessor mAnalyzerProcessor;
 
     std::unique_ptr<visage::ApplicationWindow> mApp;
