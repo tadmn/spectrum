@@ -41,7 +41,7 @@ add_embedded_resources(EmbeddedFontResources "Fonts.h" "resources::fonts" "${FON
 file(GLOB_RECURSE ICON_FILES icons/*.svg)
 add_embedded_resources(EmbeddedIconResources "Icons.h" "resources::icons" "${ICON_FILES}")
 
-file(GLOB SOURCE_FILES src/*.cpp src/*.h)
+file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 
 add_library(${PROJECT_NAME}-impl STATIC ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME}-impl PUBLIC clap)
