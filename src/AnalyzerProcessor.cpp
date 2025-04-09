@@ -49,8 +49,8 @@ void AnalyzerProcessor::setFftSize(int fftSize) {
     parameterChanged();
 }
 
-void AnalyzerProcessor::setMinFrequency(double minFreq) {
-    minFreq = std::max(minFreq, 0.0);
+void AnalyzerProcessor::setMinFrequency(float minFreq) {
+    minFreq = std::max(minFreq, 0.f);
 
     {
         const std::scoped_lock lock(mMutex);
@@ -61,8 +61,8 @@ void AnalyzerProcessor::setMinFrequency(double minFreq) {
     parameterChanged();
 }
 
-void AnalyzerProcessor::setMaxFrequency(double maxFreq) {
-    maxFreq = std::max(maxFreq, 0.0);
+void AnalyzerProcessor::setMaxFrequency(float maxFreq) {
+    maxFreq = std::max(maxFreq, 0.f);
 
     {
         const std::scoped_lock lock(mMutex);
@@ -73,7 +73,7 @@ void AnalyzerProcessor::setMaxFrequency(double maxFreq) {
     parameterChanged();
 }
 
-void AnalyzerProcessor::setWeightingDbPerOctave(double dbPerOctave) {
+void AnalyzerProcessor::setWeightingDbPerOctave(float dbPerOctave) {
     {
         std::scoped_lock lock(mMutex);
         mWeightingDbPerOctave = dbPerOctave;
@@ -83,11 +83,11 @@ void AnalyzerProcessor::setWeightingDbPerOctave(double dbPerOctave) {
     parameterChanged();
 }
 
-double AnalyzerProcessor::weightingDbPerOctave() const noexcept {
+float AnalyzerProcessor::weightingDbPerOctave() const noexcept {
     return mWeightingDbPerOctave;
 }
 
-void AnalyzerProcessor::setWeightingCenterFrequency(double centerFrequency) {
+void AnalyzerProcessor::setWeightingCenterFrequency(float centerFrequency) {
     {
         std::scoped_lock lock(mMutex);
         mWeightingCenterFrequency = centerFrequency;
@@ -97,12 +97,12 @@ void AnalyzerProcessor::setWeightingCenterFrequency(double centerFrequency) {
     parameterChanged();
 }
 
-double AnalyzerProcessor::weightingCenterFrequency() const noexcept {
+float AnalyzerProcessor::weightingCenterFrequency() const noexcept {
     return mWeightingCenterFrequency;
 }
 
-void AnalyzerProcessor::setLineSmoothingFactor(double factor) {
-    factor = std::max(factor, 1.0);
+void AnalyzerProcessor::setLineSmoothingFactor(float factor) {
+    factor = std::max(factor, 1.f);
 
     {
         const std::scoped_lock lock(mMutex);
@@ -129,17 +129,17 @@ void AnalyzerProcessor::setFftHopSize(int hopSize) {
     parameterChanged();
 }
 
-void AnalyzerProcessor::setAttackRate(double attackRate) {
+void AnalyzerProcessor::setAttackRate(float attackRate) {
     mAttack.store(attackRate, std::memory_order_relaxed);
     parameterChanged();
 }
 
-void AnalyzerProcessor::setReleaseRate(double releaseRate) {
+void AnalyzerProcessor::setReleaseRate(float releaseRate) {
     mRelease.store(releaseRate, std::memory_order_relaxed);
     parameterChanged();
 }
 
-void AnalyzerProcessor::setMinDb(double minDb) {
+void AnalyzerProcessor::setMinDb(float minDb) {
     mMinDb.store(minDb, std::memory_order_relaxed);
     parameterChanged();
 }
@@ -176,7 +176,7 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
     const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
     const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
 
-    const auto minDb = mMinDb.load(std::memory_order_relaxed);
+    const auto minDb = static_cast<double>(mMinDb.load(std::memory_order_relaxed));
 
     std::vector<std::complex<float>> fftOutput;
 
@@ -268,8 +268,8 @@ void AnalyzerProcessor::updateBands() {
         normalizationFactor = 1.0 / maxMag;
     }
 
-    const auto logMinFreq = std::log10(mMinFrequency);
-    const auto logMaxFreq = std::log10(mMaxFrequency);
+    const auto logMinFreq = static_cast<double>(std::log10(mMinFrequency));
+    const auto logMaxFreq = static_cast<double>(std::log10(mMaxFrequency));
     const auto logDisplayStep = (logMaxFreq - logMinFreq) / mTargetNumBands;
 
     mBands.clear();

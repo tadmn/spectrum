@@ -152,21 +152,21 @@ bool SpectrumPlugin::stateLoad(const clap_istream* stream) noexcept {
 
         // Apply all parameters from the loaded JSON at once
         p.setFftSize(j["fftSize"].get<int>());
-        p.setMinFrequency(j["minFrequency"].get<double>());
-        p.setMaxFrequency(j["maxFrequency"].get<double>());
+        p.setMinFrequency(j["minFrequency"].get<float>());
+        p.setMaxFrequency(j["maxFrequency"].get<float>());
         p.setTargetNumBands(j["targetNumBands"].get<int>());
-        p.setWeightingDbPerOctave(j["weightingDbPerOctave"].get<double>());
-        p.setWeightingCenterFrequency(j["weightingCenterFrequency"].get<double>());
-        p.setLineSmoothingFactor(j["lineSmoothingFactor"].get<double>());
+        p.setWeightingDbPerOctave(j["weightingDbPerOctave"].get<float>());
+        p.setWeightingCenterFrequency(j["weightingCenterFrequency"].get<float>());
+        p.setLineSmoothingFactor(j["lineSmoothingFactor"].get<float>());
 
         const auto windowType = magic_enum::enum_cast<tb::WindowType>(j["windowType"].get<std::string>());
         if (windowType.has_value())
             p.setWindowType(windowType.value());
 
         p.setFftHopSize(j["fftHopSize"].get<int>());
-        p.setAttackRate(j["attack"].get<double>());
-        p.setReleaseRate(j["release"].get<double>());
-        p.setMinDb(j["minDb"].get<double>());
+        p.setAttackRate(j["attack"].get<float>());
+        p.setReleaseRate(j["release"].get<float>());
+        p.setMinDb(j["minDb"].get<float>());
 
         return true;
     }

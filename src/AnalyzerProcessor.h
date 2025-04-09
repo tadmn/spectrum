@@ -34,23 +34,23 @@ class AnalyzerProcessor {
     void setFftSize(int fftSize);
     int fftSize() const noexcept { return mFftSize; }
 
-    void setMinFrequency(double minFreq);
-    double minFrequency() const noexcept { return mMinFrequency; }
+    void setMinFrequency(float minFreq);
+    float minFrequency() const noexcept { return mMinFrequency; }
 
-    void setMaxFrequency(double maxFreq);
-    double maxFrequency() const noexcept { return mMaxFrequency; }
+    void setMaxFrequency(float maxFreq);
+    float maxFrequency() const noexcept { return mMaxFrequency; }
 
-    void setMinDb(double minDb);
-    double minDb() const noexcept { return mMinDb.load(std::memory_order_relaxed); }
+    void setMinDb(float minDb);
+    float minDb() const noexcept { return mMinDb.load(std::memory_order_relaxed); }
 
-    void setWeightingDbPerOctave(double dbPerOctave);
-    double weightingDbPerOctave() const noexcept;
+    void setWeightingDbPerOctave(float dbPerOctave);
+    float weightingDbPerOctave() const noexcept;
 
-    void setWeightingCenterFrequency(double centerFrequency);
-    double weightingCenterFrequency() const noexcept;
+    void setWeightingCenterFrequency(float centerFrequency);
+    float weightingCenterFrequency() const noexcept;
 
-    void setLineSmoothingFactor(double factor);
-    double lineSmoothingFactor() const noexcept { return mLineSmoothingFactor; }
+    void setLineSmoothingFactor(float factor);
+    float lineSmoothingFactor() const noexcept { return mLineSmoothingFactor; }
 
     void setWindowType(tb::WindowType windowType);
     tb::WindowType windowType() const noexcept { return mWindowType; }
@@ -58,11 +58,11 @@ class AnalyzerProcessor {
     void setFftHopSize(int hopSize);
     int fftHopSize() const noexcept { return mFftHopSize.load(std::memory_order_relaxed); }
 
-    void setAttackRate(double attackRate);
-    double attackRate() const noexcept { return mAttack.load(std::memory_order_relaxed); }
+    void setAttackRate(float attackRate);
+    float attackRate() const noexcept { return mAttack.load(std::memory_order_relaxed); }
 
-    void setReleaseRate(double releaseRate);
-    double releaseRate() const noexcept { return mRelease.load(std::memory_order_relaxed); }
+    void setReleaseRate(float releaseRate);
+    float releaseRate() const noexcept { return mRelease.load(std::memory_order_relaxed); }
 
     void processAudio(choc::buffer::ChannelArrayView<float> audio);
     void processAnalyzer(double deltaTimeSeconds);
@@ -81,19 +81,19 @@ class AnalyzerProcessor {
     // band vector being resized, etc.)
     double mSampleRate = 44'100.0;
     int mFftSize = 4'096.0;
-    double mMinFrequency = 15.0;
-    double mMaxFrequency = 22'000.0;
+    float mMinFrequency = 15.f;
+    float mMaxFrequency = 22'000.f;
     int mTargetNumBands = 320;
-    double mWeightingDbPerOctave = 6.0;
-    double mWeightingCenterFrequency = 1'000.0;
-    double mLineSmoothingFactor = 8.0;
+    float mWeightingDbPerOctave = 6.f;
+    float mWeightingCenterFrequency = 1'000.f;
+    float mLineSmoothingFactor = 8.f;
     tb::WindowType mWindowType = tb::WindowType::BlackmanHarris;
 
     // "Realtime" parameters. Usually just a lightweight atomic `store`
     std::atomic<int> mFftHopSize = 1024;
-    std::atomic<double> mAttack = 15.0;
-    std::atomic<double> mRelease = 0.85;
-    std::atomic<double> mMinDb = -100.0;
+    std::atomic<float> mAttack = 15.f;
+    std::atomic<float> mRelease = 0.85f;
+    std::atomic<float> mMinDb = -100.f;
 
     std::vector<float> mWindow;
     std::unique_ptr<tb::FifoBuffer<float>> mFifoBuffer;
