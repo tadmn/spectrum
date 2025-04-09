@@ -44,7 +44,7 @@ class AnalyzerFrame : public visage::Frame {
     }
 
     void draw(visage::Canvas& canvas) override {
-        mAnalyzerProcessor.process(canvas.deltaTime());
+        mAnalyzerProcessor.processAnalyzer(canvas.deltaTime());
 
         const auto& line = mAnalyzerProcessor.spectrumLine();
         for (int i = 0; i < line.size(); ++i) {

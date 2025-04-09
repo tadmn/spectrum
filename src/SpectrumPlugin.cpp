@@ -41,7 +41,7 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    mAnalyzerProcessor.process(in.getFirstChannels(1));
+    mAnalyzerProcessor.processAudio(in.getFirstChannels(1));
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {

@@ -144,7 +144,7 @@ void AnalyzerProcessor::setMinDb(double minDb) {
     parameterChanged();
 }
 
-void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
+void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio) {
     // Is realtime safe as long as no changes are made to the analyzer. In the case that
     // changes are made, this has a small potential to briefly block while the OS notifies
     // the main thread on the unlock call to the mutex
@@ -172,7 +172,7 @@ void AnalyzerProcessor::process(choc::buffer::ChannelArrayView<float> audio) {
     }
 }
 
-void AnalyzerProcessor::process(double deltaTimeSeconds) {
+void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
     const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
     const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
 

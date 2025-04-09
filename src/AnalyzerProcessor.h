@@ -64,8 +64,8 @@ class AnalyzerProcessor {
     void setReleaseRate(double releaseRate);
     double releaseRate() const noexcept { return mRelease.load(std::memory_order_relaxed); }
 
-    void process(choc::buffer::ChannelArrayView<float> audio);
-    void process(double deltaTimeSeconds);
+    void processAudio(choc::buffer::ChannelArrayView<float> audio);
+    void processAnalyzer(double deltaTimeSeconds);
 
     void reset();
 
