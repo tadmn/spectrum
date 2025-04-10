@@ -102,7 +102,7 @@ float AnalyzerProcessor::weightingCenterFrequency() const noexcept {
 }
 
 void AnalyzerProcessor::setLineSmoothingFactor(float factor) {
-    factor = std::max(factor, 1.f);
+    factor = std::clamp(factor, 1.f, 50.f);
 
     {
         const std::scoped_lock lock(mMutex);
@@ -334,7 +334,7 @@ void AnalyzerProcessor::updateBands() {
     {
         mSmoothedLine.clear();
         const int smoothedLineSize = std::round(mLineSmoothingFactor * mBandsLine.size());
-        if (smoothedLineSize > mSmoothedLine.size()) {
+        if (smoothedLineSize > mBandsLine.size()) {
             mSmoothedLine.resize(std::round(mLineSmoothingFactor * mBands.size()));
         }
     }
