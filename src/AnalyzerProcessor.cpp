@@ -54,7 +54,7 @@ void AnalyzerProcessor::setFftSize(int fftSize) {
 }
 
 void AnalyzerProcessor::setMinFrequency(float minFreq) {
-    minFreq = std::max(minFreq, 0.f);
+    minFreq = std::max(minFreq, 1.f);
 
     {
         const std::scoped_lock lock(mMutex);
@@ -66,7 +66,7 @@ void AnalyzerProcessor::setMinFrequency(float minFreq) {
 }
 
 void AnalyzerProcessor::setMaxFrequency(float maxFreq) {
-    maxFreq = std::max(maxFreq, 0.f);
+    maxFreq = std::max(maxFreq, 1.f);
 
     {
         const std::scoped_lock lock(mMutex);
