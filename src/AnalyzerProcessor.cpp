@@ -17,6 +17,8 @@ const std::vector<tb::Point>& AnalyzerProcessor::spectrumLine() const {
 }
 
 void AnalyzerProcessor::setTargetNumBands(int targetNumberOfBands) {
+    targetNumberOfBands = std::max(1, targetNumberOfBands);
+
     {
         const std::scoped_lock lock(mMutex);
         mTargetNumBands = targetNumberOfBands;
