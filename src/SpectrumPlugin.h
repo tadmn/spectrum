@@ -64,4 +64,9 @@ class SpectrumPlugin : public ClapPlugin {
     AnalyzerProcessor mAnalyzerProcessor;
 
     std::unique_ptr<visage::ApplicationWindow> mApp;
+
+public:
+    // Prevent copying & moving
+    SpectrumPlugin(const SpectrumPlugin&) = delete;
+    SpectrumPlugin& operator=(const SpectrumPlugin&) = delete;
 };

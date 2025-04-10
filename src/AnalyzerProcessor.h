@@ -109,4 +109,9 @@ class AnalyzerProcessor {
 
     std::vector<tb::Point> mBandsLine;
     std::vector<tb::Point> mSmoothedLine;
+
+public:
+    // Prevent copying & moving
+    AnalyzerProcessor(const AnalyzerProcessor&) = delete;
+    AnalyzerProcessor& operator=(const AnalyzerProcessor&) = delete;
 };
