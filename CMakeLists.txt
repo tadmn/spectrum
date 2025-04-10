@@ -9,8 +9,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 project(spectrum VERSION 0.0.0 LANGUAGES C CXX)
 set(PRODUCT_NAME "Spectrum")
 
-option(USE_SANITIZER "Build and link with ASAN" FALSE)
-option(COPY_AFTER_BUILD "Will copy after build" TRUE)
+option(USE_SANITIZER "Build and link with ASAN" OFF)
+option(COPY_AFTER_BUILD "Will copy after build" ON)
 
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "CMAKE_BUILD_TYPE unspecified; picking Release")
