@@ -41,9 +41,12 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    if (in.getNumChannels() == 1) {
-        mAnalyzerProcessor.processAudio(in.getFirstChannels(1));
-    } else if (in.getNumChannels() == 2) {
+    if (in.getNumChannels() != 2) {
+        tb_assert(false); // Unsupported channel count
+        return CLAP_PROCESS_ERROR;
+    }
+
+    {
         // Average the two input channels into a single buffer to be processed
         tb_assert(mStereoMixBuffer.getNumFrames() >= in.getNumFrames());
         auto mix = mStereoMixBuffer.getStart(in.getNumFrames());
@@ -51,9 +54,6 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
         add(mix, in.getChannel(1));
         applyGain(mix, 0.5f);
         mAnalyzerProcessor.processAudio(mix);
-    } else {
-        tb_assert(false); // Unsupported channel count
-        return CLAP_PROCESS_ERROR;
     }
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
