@@ -18,7 +18,7 @@ class MainFrame : public visage::Frame {
         mAnalyzer(p), mButton(resources::icons::settings_svg.data, resources::icons::settings_svg.size),
         mSettings(p) {
 
-        mSettings.setAlphaTransparency(0.66);
+        mSettings.setAlphaTransparency(0.5);
 
         addChild(mGrid);
         addChild(mAnalyzer);
@@ -54,8 +54,9 @@ class MainFrame : public visage::Frame {
 
     void parametersChanged() {
         mSettings.updateSettings();
-        mGrid.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
-        mDbLabels.setDbRange(mAnalyzerProcessor.minDb(), 0.f);//todo
+        constexpr auto kMaxDb = 0.f;
+        mGrid.setDbRange(mAnalyzerProcessor.minDb(), kMaxDb);
+        mDbLabels.setDbRange(mAnalyzerProcessor.minDb(), kMaxDb);
     }
 
     void draw(visage::Canvas& canvas) override {
