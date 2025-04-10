@@ -27,6 +27,7 @@ class AnalyzerProcessor {
     const std::vector<Band>& bands() const noexcept { return mBands; }
 
     void setTargetNumBands(int targetNumberOfBands);
+    int targetNumBands() const noexcept { return mTargetNumBands; }
 
     void setSampleRate(double sampleRate);
     double sampleRate() const noexcept { return mSampleRate; }

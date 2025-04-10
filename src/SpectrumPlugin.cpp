@@ -93,7 +93,7 @@ bool SpectrumPlugin::stateSave(const clap_ostream* stream) noexcept {
     j["fftSize"] = p.fftSize();
     j["minFrequency"] = p.minFrequency();
     j["maxFrequency"] = p.maxFrequency();
-    j["targetNumBands"] = p.bands().size();
+    j["targetNumBands"] = p.targetNumBands();
     j["weightingDbPerOctave"] = p.weightingDbPerOctave();
     j["weightingCenterFrequency"] = p.weightingCenterFrequency();
     j["lineSmoothingFactor"] = p.lineSmoothingFactor();
