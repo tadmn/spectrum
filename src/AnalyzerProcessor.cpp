@@ -29,6 +29,8 @@ void AnalyzerProcessor::setTargetNumBands(int targetNumberOfBands) {
 }
 
 void AnalyzerProcessor::setSampleRate(double sampleRate) {
+    tb_assert(sampleRate > 0.0);
+
     {
         const std::scoped_lock lock(mMutex);
         mSampleRate = sampleRate;
@@ -90,6 +92,9 @@ float AnalyzerProcessor::weightingDbPerOctave() const noexcept {
 }
 
 void AnalyzerProcessor::setWeightingCenterFrequency(float centerFrequency) {
+    if (centerFrequency <= 0.f)
+        centerFrequency = mWeightingCenterFrequency; // Ignore negative values
+
     {
         std::scoped_lock lock(mMutex);
         mWeightingCenterFrequency = centerFrequency;
