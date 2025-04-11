@@ -1,5 +1,6 @@
 #pragma once
 
+#include <choc_SampleBuffers.h>
 #include <tb_FifoBuffer.h>
 #include <tb_Interpolation.h>
 #include <tb_Windowing.h>
@@ -53,11 +54,12 @@ public:
      * @brief Returns the current spectrum line data for visualization.
      *
      * The points will have x values on the range [0, 1], where 0.0 is the minimum frequency set
-     * via `setMinFrequency` and 1.0 is the maximum frequency set via `setMaxFrequency`. The y
-     * values will be on the range [1, -infinity], where 1.0 represents the minimum dB set via
-     * `setMinDb`, the value 0.0 represents 0.0 dB FS (full scale), and negative numbers represent
-     * values over 0 dB (these values do not get clamped). This range is well suited for 2d
-     * graphics, where `1.0 * height` is the bottom of the screen and `0.0 * height` is the top.
+     * via `setMinFrequency` and 1.0 is the maximum frequency set via `setMaxFrequency`. X
+     * frequency values are logarithmically spaced. The y values will be on the range
+     * [1, -infinity], where 1.0 represents the minimum dB set via `setMinDb`, the value 0.0
+     * represents 0.0 dB FS (full scale), and negative numbers represent values over 0 dB (these
+     * values do not get clamped). This range is well suited for 2d graphics, where `1.0 * height`
+     * is the bottom of the screen and `0.0 * height` is the top.
      *
      * If line smoothing is enabled (via `setLineSmoothingFactor`), then the line will have more
      * (interpolated) points, and it will be smoother and less jagged.

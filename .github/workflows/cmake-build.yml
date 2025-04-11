@@ -25,8 +25,20 @@ jobs:
 
       - name: Configure CMake
         working-directory: ./build
-        run: cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_SANITIZER=OFF
+        run: cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_SANITIZER=OFF -DBUILD_TESTS=ON
 
       - name: Build spectrum_clap target
         working-directory: ./build
         run: cmake --build . --target spectrum_clap --config Release
+
+      - name: Build spectrum_test_runner target
+        working-directory: ./build
+        run: cmake --build . --target spectrum_test_runner --config Release
+
+      - name: Run tests 10 times
+        working-directory: ./build
+        run: |
+          for i in {1..10}; do
+            echo "Test run $i of 10"
+            ./spectrum_test_runner
+          done

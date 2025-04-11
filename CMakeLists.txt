@@ -11,13 +11,14 @@ set(PRODUCT_NAME "Spectrum")
 
 option(USE_SANITIZER "Build and link with ASAN" OFF)
 option(COPY_AFTER_BUILD "Will copy after build" ON)
+option(BUILD_TESTS "Build unit tests" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "CMAKE_BUILD_TYPE unspecified; picking Release")
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-CPMAddPackage("gh:tadmn/tad-bits#3d821e11a8d3bc542d59713777d81bd5cc00765d")
+CPMAddPackage("gh:tadmn/tad-bits#72d3efe6fc5e32bb09a099a81de78eec76f211e4")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:free-audio/clap#1.2.6")
@@ -45,7 +46,7 @@ file(GLOB_RECURSE SOURCE_FILES src/*.cpp src/*.h)
 
 add_library(${PROJECT_NAME}-impl STATIC ${SOURCE_FILES})
 target_link_libraries(${PROJECT_NAME}-impl PUBLIC clap)
-target_link_libraries(${PROJECT_NAME}-impl PRIVATE
+target_link_libraries(${PROJECT_NAME}-impl PUBLIC
   clap-helpers clap-wrapper-extensions
   tad-bits choc farbot FastFourier
   visage EmbeddedFontResources EmbeddedIconResources
@@ -76,3 +77,11 @@ make_clapfirst_plugins(
 
   ASSET_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME}_artifacts
 )
+
+if (BUILD_TESTS)
+  CPMAddPackage("gh:catchorg/Catch2@3.8.1")
+  set(TEST_RUNNER spectrum_test_runner)
+  add_executable(${TEST_RUNNER} tests/AnalyzerProcessorTests.cpp)
+  target_link_libraries(${TEST_RUNNER} PRIVATE ${PROJECT_NAME}-impl Catch2::Catch2WithMain)
+  target_include_directories(${TEST_RUNNER} PRIVATE src)
+endif()
