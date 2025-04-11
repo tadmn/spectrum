@@ -25,12 +25,12 @@ CPMAddPackage("gh:free-audio/clap-helpers#58ab81b1dc8219e859529c1306f364bb3aedf7
 
 set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE CACHE BOOL "Download plugin dependencies")
 set(CLAP_WRAPPER_OUTPUT_NAME "${PRODUCT_NAME}" CACHE BOOL "ClapAsVST3 Wrapper name")
-CPMAddPackage("gh:free-audio/clap-wrapper#a610e1a0821d54f2c64d1f13fd737ba2ccf314ab")
+CPMAddPackage("gh:free-audio/clap-wrapper#c59fe7e142c35a98c457c6850ab283e6a3d07025")
 
-CPMAddPackage("gh:tadmn/choc#7ea2feaa80cd498963d065cd0199a9ebd9c610a6")
+CPMAddPackage("gh:tadmn/choc#020ebce3e20628d4978e04ab23cea5fc70dea2aa")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
 CPMAddPackage("gh:tadmn/FastFourier#aadb30964063a216b3a01337541dd817dc7f3952")
-CPMAddPackage("gh:tadmn/visage#80bbab0e983ccf74840b5099b506b5d1dc96e3d1")
+CPMAddPackage("gh:tadmn/visage#295bc914b8fc085f200e2d4dac7f8d37da91fcc5")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
 CPMAddPackage("gh:nlohmann/json@3.11.3")
 
