@@ -152,9 +152,9 @@ void AnalyzerProcessor::setMinDb(float minDb) {
 }
 
 void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio) {
-    // Is realtime safe as long as no changes are made to the analyzer. In the case that
-    // changes are made, this has a small potential to briefly block while the OS notifies
-    // the main thread on the unlock call to the mutex
+    // Is realtime safe as long as no "non-real-time" parameters are changed. In that case, this
+    // has a small potential to briefly block while the OS notifies the main thread on the unlock
+    // call to the mutex
     const std::unique_lock lock(mMutex, std::try_to_lock);
     if (! lock.owns_lock())
         return; // Try to avoid blocking the audio thread as much as possible
@@ -316,7 +316,7 @@ void AnalyzerProcessor::updateBands() {
     mBandsLine.back().x  = 1.0;
 
     for (int i = 0; i < mBands.size(); ++i) {
-        const auto numBinsInBand = std::accumulate(mBands[i].bins.begin(), mBands[i].bins.end(), 0);
+        const auto numBinsInBand = mBands[i].bins.size();
         if (numBinsInBand == 1) {
             // Just use the actual frequency position of the single bin
             const auto freq = mBands[i].bins[0] * deltaFreq;
