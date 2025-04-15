@@ -22,7 +22,7 @@ include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:tadmn/choc#020ebce3e20628d4978e04ab23cea5fc70dea2aa")
 CPMAddPackage("gh:tadmn/farbot#8807ed0c40c861018226bf764f3f61105344a719")
-CPMAddPackage("gh:tadmn/FastFourier#aadb30964063a216b3a01337541dd817dc7f3952")
+CPMAddPackage("gh:tadmn/FastFourier#017bd92c0301eec450cad005c0459047d1181e92")
 
 add_library(spectrum-analyzer-processor STATIC src/analyzer/AnalyzerProcessor.cpp src/analyzer/AnalyzerProcessor.h)
 target_link_libraries(spectrum-analyzer-processor PUBLIC tad-bits choc farbot FastFourier)
