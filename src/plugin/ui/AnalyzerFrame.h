@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "../AnalyzerProcessor.h"
+#include "AnalyzerProcessor.h"
 
 #include <visage/graphics.h>
 #include <visage/widgets.h>

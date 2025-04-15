@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "../AnalyzerProcessor.h"
+#include "AnalyzerProcessor.h"
 #include "embedded/Fonts.h"
 
 #include <magic_enum/magic_enum.hpp>

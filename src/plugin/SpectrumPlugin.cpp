@@ -12,7 +12,7 @@ const clap_plugin_descriptor* SpectrumPlugin::getDescriptor() {
 
     static clap_plugin_descriptor desc = { CLAP_VERSION,
                                            "com.tadmn.spectrum",
-                                           PRODUCT_NAME,
+                                           PLUGIN_NAME,
                                            "tadmn",
                                            "",
                                            "",

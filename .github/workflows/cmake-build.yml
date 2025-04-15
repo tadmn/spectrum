@@ -23,22 +23,14 @@ jobs:
       - name: Create build directory
         run: mkdir -p build
 
-      - name: Configure CMake
-        working-directory: ./build
-        run: cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_SANITIZER=OFF -DBUILD_TESTS=ON
-
-      - name: Build spectrum_clap target
-        working-directory: ./build
-        run: cmake --build . --target spectrum_clap --config Release
-
-      - name: Build spectrum_test_runner target
-        working-directory: ./build
-        run: cmake --build . --target spectrum_test_runner --config Release
-
-      - name: Run tests 10 times
+      - name: Build and test
         working-directory: ./build
         run: |
+          cmake .. -G Ninja -DCMAKE_BUILD_TYPE=Release -DUSE_SANITIZER=OFF -DBUILD_PLUGIN=ON -DBUILD_TESTS=ON
+          cmake --build . --target spectrum-analyzer-processor --config Release
+          cmake --build . --target spectrum_test_runner --config Release
           for i in {1..10}; do
             echo "Test run $i of 10"
             ./spectrum_test_runner
           done
+          cmake --build . --target spectrum_clap --config Release
