@@ -1,15 +1,14 @@
 #pragma once
 
 #include <choc_SampleBuffers.h>
+#include <complex>
+#include <farbot/RealtimeObject.hpp>
+#include <FastFourier.h>
+#include <functional>
 #include <tb_FifoBuffer.h>
 #include <tb_Interpolation.h>
 #include <tb_Windowing.h>
-#include <farbot/RealtimeObject.hpp>
-#include <FastFourier.h>
-
 #include <vector>
-#include <complex>
-#include <functional>
 
 /**
  * @class AnalyzerProcessor
@@ -20,9 +19,30 @@
  * logarithmically spaced bands, applies various processing options (windowing, weighting,
  * smoothing, auto-normalization), and provides data for spectrum visualization with ballistics
  * (attack/release).
+ *
+ * @note Currently only a channel count of 1 is supported.
+ *
+ * Example:
+ *
+ * (main thread)
+ * AnalyzerProcessor analyzer;
+ *
+ * // Usually called on the audio pipeline's `prepare` callback
+ * analyzer.setSampleRate(sampleRate);
+ * analyzer.reset();
+ *
+ * (audio thread rendering callback)
+ * analyzer.processAudio(bufferPointers, numChannels, numSamplesPerChannel);
+ *
+ * (main thread, called every draw callback)
+ * analyzer.processAnalyzer(timeInSecondsSinceLastDrawCallback);
+ * const auto& line = analyzer.spectrumLine();
+ * canvas.startLine();
+ * for (auto point : line)
+ *     canvas.drawLineTo(point.x * canvas.width(), point.y * canvas.height()));
  */
 class AnalyzerProcessor {
-public:
+  public:
     /**
      * @struct Band
      * @brief Represents a frequency band with associated FFT bins and amplitude. Energy of
@@ -30,7 +50,7 @@ public:
      */
     struct Band {
         std::vector<int> bins = {};  ///< FFT bin indices that belong to this band
-        float dB = -100.f;           ///< Current amplitude of the band in dB
+        float dB = -100.f;  ///< Current amplitude of the band in dB
     };
 
     /**
@@ -265,8 +285,26 @@ public:
      * "non-real-time" parameter is changed. See the implementation comments for details.
      *
      * @param audio Audio buffer to analyze.
+     *
+     * @note Currently only a channel count of 1 is supported.
      */
     void processAudio(choc::buffer::ChannelArrayView<float> audio);
+
+    /**
+     * @brief Processes incoming audio data for analysis using raw buffer pointers.
+     *
+     * This is an alternative version of processAudio that accepts raw float buffer pointers
+     * instead of choc::buffer::ChannelArrayView. It's useful when integrating with APIs
+     * or frameworks that provide audio data in this format.
+     *
+     * @param audioBuffers Array of pointers to audio channel data. Each pointer points to
+     *                    an array of float samples for a single channel.
+     * @param numChannels Number of audio channels in the input (size of audioBuffers array).
+     * @param numFrames Number of audio frames (samples per channel) in each buffer.
+     *
+     * @note Currently only a channel count of 1 is supported.
+     */
+    void processAudio(float** audioBuffers, int numChannels, int numFrames);
 
     /**
      * @brief Updates spectrum analysis with time-based parameters.
@@ -283,13 +321,12 @@ public:
      */
     void reset();
 
-private:
+  private:
     void updateBands();
     void parameterChanged() const;
     int clampFftHopSize(int inHopSize) const;
 
-    using RealtimeObject = farbot::RealtimeObject<std::vector<std::complex<float>>,
-                                                farbot::RealtimeObjectOptions::realtimeMutatable>;
+    using RealtimeObject = farbot::RealtimeObject<std::vector<std::complex<float>>, farbot::RealtimeObjectOptions::realtimeMutatable>;
 
     // "Non-realtime" parameters (i.e. they require a more hefty internal update, with buffers & the
     // band vector being resized, etc.)
@@ -323,7 +360,7 @@ private:
     std::vector<tb::Point> mBandsLine;
     std::vector<tb::Point> mSmoothedLine;
 
-public:
+  public:
     // Prevent copying & moving
     AnalyzerProcessor(const AnalyzerProcessor&) = delete;
     AnalyzerProcessor& operator=(const AnalyzerProcessor&) = delete;

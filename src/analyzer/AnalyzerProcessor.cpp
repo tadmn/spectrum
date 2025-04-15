@@ -5,6 +5,13 @@
 #include <numeric>
 #include <tb_Math.h>
 
+namespace {
+
+// Currently we only support 1 channel.
+constexpr int kNumChannels = 1;
+
+}
+
 AnalyzerProcessor::AnalyzerProcessor() {
     updateBands();
 }
@@ -152,6 +159,8 @@ void AnalyzerProcessor::setMinDb(float minDb) {
 }
 
 void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio) {
+    tb_assert(audio.getNumChannels() == kNumChannels);
+
     // Is realtime safe as long as no "non-real-time" parameters are changed. In that case, this
     // has a small potential to briefly block while the OS notifies the main thread on the unlock
     // call to the mutex
@@ -177,6 +186,11 @@ void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio
             mFifoBuffer->pop(mFftHopSize.load(std::memory_order_relaxed));
         }
     }
+}
+
+void AnalyzerProcessor::processAudio(float** audioBuffers, int numChannels, int numFrames) {
+    tb_assert(numChannels == kNumChannels);
+    processAudio(choc::buffer::createChannelArrayView(audioBuffers, numChannels, numFrames));
 }
 
 void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
@@ -215,7 +229,7 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
 
         // Calculate ballistics
         {
-            const auto oldDb = band.dB;
+            const double oldDb = band.dB;
             if (dB > oldDb)
                 dB = attack * dB + (1.0 - attack) * oldDb;
             else
@@ -244,8 +258,8 @@ void AnalyzerProcessor::updateBands() {
     const auto numBins = mFftSize / 2 + 1;
 
     mWindow = tb::window<float>(mWindowType, mFftSize);
-    mFifoBuffer = std::make_unique<tb::FifoBuffer<float>>(1, mFftSize);
-    mFftInBuffer.resize({ .numChannels = 1, .numFrames = static_cast<uint32_t>(mFftSize) });
+    mFifoBuffer = std::make_unique<tb::FifoBuffer<float>>(kNumChannels, mFftSize);
+    mFftInBuffer.resize({ .numChannels = kNumChannels, .numFrames = static_cast<uint32_t>(mFftSize) });
     mFft = std::make_unique<FastFourier>(mFftSize);
     mFftComplexOutput = std::make_unique<RealtimeObject>(std::vector<std::complex<float>>(numBins));
 
