@@ -1,6 +1,13 @@
 # Spectrum
 Free, liberally licensed, 2-dimensional audio spectrum analyzer.
 
+<video
+playsInline
+muted
+disablePictureInPicture
+src="https://github.com/user-attachments/assets/b17704a0-27c9-4b15-a315-4ad742b80c49"
+/>
+
 Supported architectures:
 ```
 macOS arm64
