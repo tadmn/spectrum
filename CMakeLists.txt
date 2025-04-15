@@ -8,8 +8,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 project(spectrum VERSION 1.0.0 LANGUAGES C CXX)
 
-option(USE_SANITIZER "Build and link with ASAN" OFF)
-option(BUILD_TESTS "Build unit tests" OFF)
+option(USE_SANITIZER "Build and link with the address sanitizer" OFF)
+option(BUILD_TESTS "Build unit test executable" OFF)
 option(BUILD_PLUGIN "Build audio plugin" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
