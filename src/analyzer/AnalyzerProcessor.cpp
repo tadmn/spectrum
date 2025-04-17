@@ -238,12 +238,15 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
             band.dB = dB;
         }
 
-        mBandsLine[i + 1].y = dB / minDb;
+        int bandsLineIndex = i;
+        if (! mSmoothedLine.empty())
+            bandsLineIndex += 2;
+
+        mBandsLine[bandsLineIndex].y = dB / minDb;
     }
 
-    if (mSmoothedLine.size() > mBandsLine.size()) {
+    if (! mSmoothedLine.empty())
         tb::catmullRomSpline(mBandsLine, mSmoothedLine);
-    }
 }
 
 void AnalyzerProcessor::reset() {
@@ -289,32 +292,39 @@ void AnalyzerProcessor::updateBands() {
         normalizationFactor = 1.0 / maxMag;
     }
 
-    const auto logMinFreq = static_cast<double>(std::log10(mMinFrequency));
-    const auto logMaxFreq = static_cast<double>(std::log10(mMaxFrequency));
-    const auto logDisplayStep = (logMaxFreq - logMinFreq) / mTargetNumBands;
+    const auto deltaFreq = mSampleRate / mFftSize;
+
+    const double visualMinLog = std::log10(mMinFrequency);
+    const double visualMaxLog = std::log10(mMaxFrequency);
+
+    const double logBinWidth = std::log10(deltaFreq);
+    const double logBandWidth = (visualMaxLog - visualMinLog) / mTargetNumBands;
+
+    const auto minLog = visualMinLog - std::max(logBinWidth, logBandWidth);
+    const auto maxLog = visualMaxLog + std::max(logBinWidth, logBandWidth);
 
     mBands.clear();
-    mBands.resize(mTargetNumBands);
+    mBands.resize(std::ceil((maxLog - minLog) / logBandWidth));
 
     mBinWeights.clear();
     mBinWeights.resize(numBins);
 
-    const auto deltaFreq = mSampleRate / mFftSize;
-
-    // Collect all bin indices into their respective bands
+    // Assign all bin indices into their respective bands
     for (int i = 0; i < numBins; ++i) {
         const auto freq = i * deltaFreq;
-        if (freq < mMinFrequency || freq > mMaxFrequency)
+
+        // Allow the zero-frequency bin to get through
+        const auto logFreq = freq > 0.0 ? std::log10(freq) : minLog;
+
+        if (logFreq < minLog || logFreq > maxLog)
             continue;
 
-        auto bandIndex = static_cast<int>((std::log10(freq) - logMinFreq) / logDisplayStep);
-        tb_assert(bandIndex >= 0 && bandIndex < mTargetNumBands);
-        bandIndex = std::clamp(bandIndex, 0, mTargetNumBands - 1);
-
+        auto bandIndex = static_cast<int>((logFreq - minLog) / logBandWidth);
+        tb_assert(bandIndex >= 0 && bandIndex < mBands.size());
         mBands[bandIndex].bins.push_back(i);
 
         // Calculate dB/octave slope weighting
-        const auto octaves = std::log(freq / mWeightingCenterFrequency);
+        const auto octaves = std::log2(freq / mWeightingCenterFrequency);
         const auto weight = std::pow(10.0, (octaves * mWeightingDbPerOctave) / 20.0);
 
         // Assign the value to our weights buffer. Make sure to also include the FFT
@@ -323,40 +333,44 @@ void AnalyzerProcessor::updateBands() {
     }
 
     // Now update the x positions for each band
+    constexpr auto kInvalidX = std::numeric_limits<float>::max();
     mBandsLine.clear();
-    mBandsLine.resize(mBands.size() + 2, {-1.0, 1.0});
-
-    mBandsLine.front().x = 0.0;
-    mBandsLine.back().x  = 1.0;
+    mBandsLine.resize(mBands.size(), {kInvalidX, 1.0});
 
     for (int i = 0; i < mBands.size(); ++i) {
         const auto numBinsInBand = mBands[i].bins.size();
         if (numBinsInBand == 1) {
             // Just use the actual frequency position of the single bin
-            const auto freq = mBands[i].bins[0] * deltaFreq;
-            mBandsLine[i + 1].x = tb::to0to1(std::log10(freq), logMinFreq, logMaxFreq);
+            const auto binFreq = mBands[i].bins[0] * deltaFreq;
+            const auto logBinFreq = binFreq > 0.0 ? std::log10(binFreq) : minLog;
+            const auto x0to1 = (logBinFreq - visualMinLog) / (visualMaxLog - visualMinLog);
+            mBandsLine[i].x = x0to1;
         } else if (numBinsInBand > 1) {
-            // Use the center position of the band
-            const auto w = (1.0 / mTargetNumBands);
-            const auto x0to1 = i * w + w * 0.5;
-            mBandsLine[i + 1].x = x0to1;
+            const auto logCenterFreq = minLog + i * logBandWidth + 0.5 * logBandWidth;
+            const auto x0to1 = (logCenterFreq - visualMinLog) / (visualMaxLog - visualMinLog);
+            mBandsLine[i].x = x0to1;
         }
     }
 
     // Now remove all the bands that don't have any bins assigned to them so we don't have gaps
-    mBands.erase(std::remove_if(mBands.begin(), mBands.end(),
-                                [](const Band& b) { return b.bins.empty(); }),
-                 mBands.end());
-
-    mBandsLine.erase(std::remove_if(mBandsLine.begin(), mBandsLine.end(),
-                                [](const tb::Point& p) { return p.x < 0.0; }),
-                 mBandsLine.end());
+    std::erase_if(mBands, [](const Band& b) { return b.bins.empty(); });
+    std::erase_if(mBandsLine, [](const tb::Point& p) { return p.x == kInvalidX; });
 
     {
         mSmoothedLine.clear();
         const int smoothedLineSize = std::round(mLineSmoothingFactor * mBandsLine.size());
         if (smoothedLineSize > mBandsLine.size()) {
-            mSmoothedLine.resize(std::round(mLineSmoothingFactor * mBands.size()));
+            constexpr float kFudgeFactor = 0.0001f;
+
+            const auto firstX = mBandsLine.front().x;
+            mBandsLine.insert(mBandsLine.begin(), { firstX - kFudgeFactor, 1.f });
+            mBandsLine.insert(mBandsLine.begin(), { firstX - kFudgeFactor - kFudgeFactor, 1.f });
+
+            const auto lastX = mBandsLine.back().x;
+            mBandsLine.push_back({ lastX + kFudgeFactor, 1.f });
+            mBandsLine.push_back({ lastX + kFudgeFactor + kFudgeFactor, 1.f });
+
+            mSmoothedLine.resize(smoothedLineSize);
         }
     }
 

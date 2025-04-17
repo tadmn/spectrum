@@ -333,7 +333,7 @@ class AnalyzerProcessor {
     double mSampleRate = 44'100.0;
     int mFftSize = 4'096.0;
     float mMinFrequency = 15.f;
-    float mMaxFrequency = 22'000.f;
+    float mMaxFrequency = 30'000.f;
     int mTargetNumBands = 320;
     float mWeightingDbPerOctave = 6.f;
     float mWeightingCenterFrequency = 1'000.f;

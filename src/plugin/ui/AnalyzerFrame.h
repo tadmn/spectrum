@@ -35,28 +35,24 @@ class AnalyzerFrame : public visage::Frame {
                                                     { x, fadeOutStart }, { x, height() }));
         }
 
-        // Tether the first and last points to bottom left and bottom right corners
         mLine->setBounds(localBounds());
-        mLine->setXAt(0, 0);
-        mLine->setYAt(0, mLine->height());
-        mLine->setXAt(mLine->numPoints() - 1, mLine->width());
-        mLine->setYAt(mLine->numPoints() - 1, mLine->height());
     }
 
     void draw(visage::Canvas& canvas) override {
         mAnalyzerProcessor.processAnalyzer(canvas.deltaTime());
 
         const auto& line = mAnalyzerProcessor.spectrumLine();
+
         for (int i = 0; i < line.size(); ++i) {
-            mLine->setXAt(i + 1, line[i].x * width());
-            mLine->setYAt(i + 1, line[i].y * height());
+            mLine->setXAt(i, line[i].x * width());
+            mLine->setYAt(i, line[i].y * height());
         }
 
         redraw();
     }
 
     void updateLine() {
-        const auto numPoints = mAnalyzerProcessor.spectrumLine().size() + 2;
+        const auto numPoints = mAnalyzerProcessor.spectrumLine().size();
         if (mLine != nullptr && mLine->numPoints() == numPoints)
             return;
 
@@ -64,7 +60,6 @@ class AnalyzerFrame : public visage::Frame {
         mLine->setPalette(&mPalette);
         mLine->setFill(true);
         mLine->setFillCenter(visage::GraphLine::kBottom);
-        mLine->setBounds(0, 0, width(), height());
         addChild(*mLine);
 
         resized();

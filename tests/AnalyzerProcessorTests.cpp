@@ -126,7 +126,7 @@ TEST_CASE("AnalyzerProcessor audio processing", "[analyzer]") {
     SECTION("Process sine wave at specific frequency") {
         constexpr float testFreq = 1'000.f; // Test with 1kHz sine wave
 
-        analyzer.processAudio(tb::makeSineWave(testFreq, analyzer.sampleRate(), 2, 4'096));
+        analyzer.processAudio(tb::makeSineWave(testFreq, analyzer.sampleRate(), 1, 4'096));
 
         // Run analyzer multiple times to ensure stable line data
         for (int i = 0; i < 10; i++)
@@ -171,7 +171,7 @@ TEST_CASE("AnalyzerProcessor audio processing", "[analyzer]") {
 TEST_CASE("AnalyzerProcessor reset functionality", "[analyzer]") {
     AnalyzerProcessor analyzer;
 
-    analyzer.processAudio(tb::makeSineWave(1'000.f, analyzer.sampleRate(), 2, 4'096, 0.5f));
+    analyzer.processAudio(tb::makeSineWave(1'000.f, analyzer.sampleRate(), 1, 4'096, 0.5f));
 
     // Process analyzer to populate bands
     for (int i = 0; i < 10; i++)
@@ -205,7 +205,7 @@ TEST_CASE("AnalyzerProcessor frequency band distribution", "[analyzer]") {
     analyzer.setMaxFrequency(20'000.f);
     analyzer.setTargetNumBands(64);
 
-    analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(2, 4'096));
+    analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
     analyzer.processAnalyzer(0.01);
 
     const auto& bands = analyzer.bands();
@@ -232,7 +232,7 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
     SECTION("No smoothing") {
         analyzer.setLineSmoothingFactor(1.f);
 
-        analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(2, 4'096));
+        analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
         analyzer.processAnalyzer(0.01);
 
         const auto& bands = analyzer.bands();
@@ -240,14 +240,14 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
 
         // The line size should have 2 more values, since we add a point at the beginning and end
         // that are tethered to the bottom left and bottom right.
-        REQUIRE(line.size() == bands.size() + 2);
+        REQUIRE(line.size() == bands.size());
     }
 
     SECTION("High smoothing") {
         // Higher smoothing should produce significantly more points
         analyzer.setLineSmoothingFactor(8.f);
 
-        analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(2, 4'096));
+        analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
         analyzer.processAnalyzer(0.01);
 
         const auto& bands = analyzer.bands();
