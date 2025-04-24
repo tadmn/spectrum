@@ -115,12 +115,12 @@ float AnalyzerProcessor::weightingCenterFrequency() const noexcept {
     return mWeightingCenterFrequency;
 }
 
-void AnalyzerProcessor::setLineSmoothingFactor(float factor) {
-    factor = std::clamp(factor, 1.f, 50.f);
+void AnalyzerProcessor::setLineSmoothingInterpolationSteps(int numInterpolationSteps) {
+    numInterpolationSteps = std::max(0, numInterpolationSteps);
 
     {
         const std::scoped_lock lock(mMutex);
-        mLineSmoothingFactor = factor;
+        mLineInterpolationSteps = numInterpolationSteps;
         updateBands();
     }
 
@@ -246,7 +246,7 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
     }
 
     if (! mSmoothedLine.empty())
-        tb::catmullRomSpline(mBandsLine, mSmoothedLine);
+        tb::catmullRom::spline(mSmoothedLine, mBandsLine, mLineInterpolationSteps);
 }
 
 void AnalyzerProcessor::reset() {
@@ -358,8 +358,7 @@ void AnalyzerProcessor::updateBands() {
 
     {
         mSmoothedLine.clear();
-        const int smoothedLineSize = std::round(mLineSmoothingFactor * mBandsLine.size());
-        if (smoothedLineSize > mBandsLine.size()) {
+        if (mLineInterpolationSteps > 0) {
             constexpr float kFudgeFactor = 0.0001f;
 
             const auto firstX = mBandsLine.front().x;
@@ -370,7 +369,7 @@ void AnalyzerProcessor::updateBands() {
             mBandsLine.push_back({ lastX + kFudgeFactor, 1.f });
             mBandsLine.push_back({ lastX + kFudgeFactor + kFudgeFactor, 1.f });
 
-            mSmoothedLine.resize(smoothedLineSize);
+            mSmoothedLine.resize(tb::catmullRom::outLineSize(mBandsLine.size(), mLineInterpolationSteps));
         }
     }
 

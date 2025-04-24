@@ -221,13 +221,13 @@ class AnalyzerProcessor {
      *
      * @param factor Smoothing factor.
      */
-    void setLineSmoothingFactor(float factor);
+    void setLineSmoothingInterpolationSteps(int numInterpolationSteps);
 
     /**
      * @brief Gets the line smoothing factor.
      * @return Current smoothing factor.
      */
-    float lineSmoothingFactor() const noexcept { return mLineSmoothingFactor; }
+    int lineSmoothingInterpolationSteps() const noexcept { return mLineInterpolationSteps; }
 
     /**
      * @brief Sets the FFT window type.
@@ -331,13 +331,13 @@ class AnalyzerProcessor {
     // "Non-realtime" parameters (i.e. they require a more hefty internal update, with buffers & the
     // band vector being resized, etc.)
     double mSampleRate = 44'100.0;
-    int mFftSize = 4'096.0;
+    int mFftSize = 4'096;
     float mMinFrequency = 15.f;
     float mMaxFrequency = 30'000.f;
     int mTargetNumBands = 320;
     float mWeightingDbPerOctave = 6.f;
     float mWeightingCenterFrequency = 1'000.f;
-    float mLineSmoothingFactor = 8.f;
+    int mLineInterpolationSteps = 4;
     tb::WindowType mWindowType = tb::WindowType::BlackmanHarris;
 
     // "Realtime" parameters. Usually just a lightweight atomic `store`

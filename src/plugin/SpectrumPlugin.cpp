@@ -96,7 +96,7 @@ bool SpectrumPlugin::stateSave(const clap_ostream* stream) noexcept {
     j["targetNumBands"] = p.targetNumBands();
     j["weightingDbPerOctave"] = p.weightingDbPerOctave();
     j["weightingCenterFrequency"] = p.weightingCenterFrequency();
-    j["lineSmoothingFactor"] = p.lineSmoothingFactor();
+    j["lineSmoothingFactor"] = p.lineSmoothingInterpolationSteps();
     j["windowType"] = std::string(magic_enum::enum_name(p.windowType()));
     j["fftHopSize"] = p.fftHopSize();
     j["attack"] = p.attackRate();
@@ -157,7 +157,7 @@ bool SpectrumPlugin::stateLoad(const clap_istream* stream) noexcept {
         p.setTargetNumBands(j["targetNumBands"].get<int>());
         p.setWeightingDbPerOctave(j["weightingDbPerOctave"].get<float>());
         p.setWeightingCenterFrequency(j["weightingCenterFrequency"].get<float>());
-        p.setLineSmoothingFactor(j["lineSmoothingFactor"].get<float>());
+        p.setLineSmoothingInterpolationSteps(j["lineSmoothingFactor"].get<float>());
 
         const auto windowType = magic_enum::enum_cast<tb::WindowType>(j["windowType"].get<std::string>());
         if (windowType.has_value())

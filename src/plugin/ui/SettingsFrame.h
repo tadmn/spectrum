@@ -106,8 +106,8 @@ class SettingsFrame : public visage::Frame {
                              p.setWeightingCenterFrequency(t.toFloat());
                          }),
         mMinDb("Min dB", [&p](const visage::String& t) { p.setMinDb(t.toFloat()); }),
-        mSmoothingFactor("Smooth",
-                         [&p](const visage::String& t) { p.setLineSmoothingFactor(t.toFloat()); }),
+        mSmoothing("Smooth",
+                         [&p](const visage::String& t) { p.setLineSmoothingInterpolationSteps(t.toInt()); }),
     mWindowTypeMenu("Windowing", [&p](tb::WindowType t){ p.setWindowType(t); }) {
         addChild(mNumBands);
         addChild(mFftSize);
@@ -119,7 +119,7 @@ class SettingsFrame : public visage::Frame {
         addChild(mDbPerOctave);
         addChild(mCenterFrequency);
         addChild(mMinDb);
-        addChild(mSmoothingFactor);
+        addChild(mSmoothing);
         addChild(mWindowTypeMenu);
 
         updateSettings(); // Set initial values
@@ -139,7 +139,7 @@ class SettingsFrame : public visage::Frame {
         mDbPerOctave.setValue(p.weightingDbPerOctave());
         mCenterFrequency.setValue(p.weightingCenterFrequency());
         mMinDb.setValue(p.minDb());
-        mSmoothingFactor.setValue(p.lineSmoothingFactor());
+        mSmoothing.setValue(p.lineSmoothingInterpolationSteps());
         mWindowTypeMenu.setValue(p.windowType());
     }
 
@@ -163,6 +163,6 @@ class SettingsFrame : public visage::Frame {
     AnalyzerProcessor& mProcessor;
 
     LabeledTextEditor mNumBands, mFftSize, mMinFreq, mMaxFreq, mFftHopSize, mAttack, mRelease,
-        mDbPerOctave, mCenterFrequency, mMinDb, mSmoothingFactor;
+        mDbPerOctave, mCenterFrequency, mMinDb, mSmoothing;
     LabeledPopupMenu<tb::WindowType> mWindowTypeMenu;
 };
