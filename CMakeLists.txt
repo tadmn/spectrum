@@ -17,7 +17,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-CPMAddPackage("gh:tadmn/tad-bits#23ed46821993b8b4717cc6b0b60556d40ba85b7d")
+CPMAddPackage("gh:tadmn/tad-bits#cc40edd675a7e1ad3265c653a93752d1d7ac6030")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:tadmn/choc#020ebce3e20628d4978e04ab23cea5fc70dea2aa")
@@ -46,9 +46,9 @@ if (BUILD_PLUGIN)
 
   set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE CACHE BOOL "Download plugin dependencies")
   set(CLAP_WRAPPER_OUTPUT_NAME "${PLUGIN_NAME}" CACHE BOOL "ClapAsVST3 Wrapper name")
-  CPMAddPackage("gh:free-audio/clap-wrapper#c59fe7e142c35a98c457c6850ab283e6a3d07025")
+  CPMAddPackage("gh:free-audio/clap-wrapper#5ba58f16a7816085d46cb8b7bb40b1eb1d9561d2")
 
-  CPMAddPackage("gh:tadmn/visage#295bc914b8fc085f200e2d4dac7f8d37da91fcc5")
+  CPMAddPackage("gh:tadmn/visage#53cf815dbd7b81942401e60cd82fcd31c32ffd7a")
   CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
   CPMAddPackage("gh:nlohmann/json@3.11.3")
 

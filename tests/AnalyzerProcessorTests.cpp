@@ -83,8 +83,8 @@ TEST_CASE("AnalyzerProcessor parameter setters", "[analyzer]") {
 
         parametersChanged = false;
         bandsChanged = false;
-        analyzer.setLineSmoothingInterpolationSteps(12.f);
-        REQUIRE(analyzer.lineSmoothingInterpolationSteps() == 12.f);
+        analyzer.setLineSmoothingInterpolationSteps(12);
+        REQUIRE(analyzer.lineSmoothingInterpolationSteps() == 12);
         REQUIRE(parametersChanged);
         REQUIRE(bandsChanged);
 
@@ -230,7 +230,7 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
     AnalyzerProcessor analyzer;
 
     SECTION("No smoothing") {
-        analyzer.setLineSmoothingInterpolationSteps(1.f);
+        analyzer.setLineSmoothingInterpolationSteps(0);
 
         analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
         analyzer.processAnalyzer(0.01);
@@ -245,7 +245,7 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
 
     SECTION("High smoothing") {
         // Higher smoothing should produce significantly more points
-        analyzer.setLineSmoothingInterpolationSteps(8.f);
+        analyzer.setLineSmoothingInterpolationSteps(8);
 
         analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
         analyzer.processAnalyzer(0.01);
