@@ -4,6 +4,7 @@
 #include <numbers>
 #include <numeric>
 #include <tb_Math.h>
+#include <tb_DspUtilities.h>
 
 namespace {
 
@@ -178,6 +179,7 @@ void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio
             // Apply windowing
             applyGainPerFrame(mFftInBuffer, [this](auto i) { return mWindow[i]; });
 
+            // Run the FFT into our realtime object buffer so that the main thread can access it
             {
                 RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftOut(*mFftComplexOutput);
                 mFft->forward(mFftInBuffer.getIterator(0).sample, fftOut->data());
@@ -201,8 +203,8 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
 
     std::vector<std::complex<float>> fftOutput;
 
+    // Grab the output of the FFT from the audio thread
     {
-        // Grab the output of the FFT from the audio thread
         RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> f(*mFftComplexOutput);
         fftOutput = *f;
     }
@@ -240,7 +242,7 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
 
         int bandsLineIndex = i;
         if (! mSmoothedLine.empty())
-            bandsLineIndex += 2;
+            bandsLineIndex += 2; // Because we added extra control points onto the smoothed line
 
         mBandsLine[bandsLineIndex].y = dB / minDb;
     }
@@ -273,16 +275,12 @@ void AnalyzerProcessor::updateBands() {
 
     {
         // First generate a sinusoid at the weighting center frequency
-        std::vector<float> signal(mFftSize);
-        for (int i = 0; i < signal.size(); ++i) {
-            auto sample = std::sin(2 * std::numbers::pi * mWeightingCenterFrequency * (i / mSampleRate));
-            sample *= mWindow[i]; // Make sure to apply window as that can affect normalization
-            signal[i] = sample;
-        }
+        auto signal = tb::makeSineWave(mWeightingCenterFrequency, mSampleRate, 1, mFftSize);
+        choc::buffer::applyGainPerFrame(signal, [this](auto i) { return mWindow[i]; });
 
         // Run the FFT and then extract the peak magnitude
         std::vector<std::complex<float>> fftOut(numBins);
-        mFft->forward(signal.data(), fftOut.data());
+        mFft->forward(signal.getIterator(0).sample, fftOut.data());
         double maxMag = 0.0;
         for (auto v : fftOut) {
             const auto mag = std::abs(v);
@@ -301,6 +299,9 @@ void AnalyzerProcessor::updateBands() {
     const double logBinWidth = std::log10(deltaFreq);
     const double logBandWidth = (visualMaxLog - visualMinLog) / mTargetNumBands;
 
+    // Here we have a separate set of min/max values. This is because we want to add a band on
+    // both the left and right side, out of the visual range, so that when we ultimately draw the
+    // line it won't abruptly cut off on the ends.
     const auto minLog = visualMinLog - std::max(logBinWidth, logBandWidth);
     const auto maxLog = visualMaxLog + std::max(logBinWidth, logBandWidth);
 
@@ -357,21 +358,25 @@ void AnalyzerProcessor::updateBands() {
     std::erase_if(mBands, [](const Band& b) { return b.bins.empty(); });
     std::erase_if(mBandsLine, [](const tb::Point& p) { return p.x == kInvalidX; });
 
-    {
-        mSmoothedLine.clear();
-        if (mLineInterpolationSteps > 0) {
-            constexpr float kFudgeFactor = 0.0001f;
+    // If smoothing is enabled, we need to prep the smoothed line and add some control points
+    mSmoothedLine.clear();
+    if (mLineInterpolationSteps > 0) {
+        // Here we're adding 2 control points on the front and end of the line. This ensures the
+        // spline function has enough control points to work with on the ends and reduces the
+        // chances of encountering interpolation artifacts at the ends.
 
-            const auto firstX = mBandsLine.front().x;
-            mBandsLine.insert(mBandsLine.begin(), { firstX - kFudgeFactor, 1.f });
-            mBandsLine.insert(mBandsLine.begin(), { firstX - kFudgeFactor - kFudgeFactor, 1.f });
+        constexpr float kFudgeFactor = 0.0001f;
 
-            const auto lastX = mBandsLine.back().x;
-            mBandsLine.push_back({ lastX + kFudgeFactor, 1.f });
-            mBandsLine.push_back({ lastX + kFudgeFactor + kFudgeFactor, 1.f });
+        const auto firstX = mBandsLine.front().x;
+        mBandsLine.insert(mBandsLine.begin(), { firstX - kFudgeFactor, 1.f });
+        mBandsLine.insert(mBandsLine.begin(), { firstX - kFudgeFactor - kFudgeFactor, 1.f });
 
-            mSmoothedLine.resize(tb::catmullRom::outLineSize(mBandsLine.size(), mLineInterpolationSteps));
-        }
+        const auto lastX = mBandsLine.back().x;
+        mBandsLine.push_back({ lastX + kFudgeFactor, 1.f });
+        mBandsLine.push_back({ lastX + kFudgeFactor + kFudgeFactor, 1.f });
+
+        // Set the proper line size now so that we avoid re-allocating while running
+        mSmoothedLine.resize(tb::catmullRom::outLineSize(mBandsLine.size(), mLineInterpolationSteps));
     }
 
     reset();

@@ -129,7 +129,7 @@ class SettingsFrame : public visage::Frame {
 
     void updateSettings() {
         const auto& p = mProcessor;
-        mNumBands.setValue(p.bands().size());
+        mNumBands.setValue(p.targetNumBands());
         mFftSize.setValue(p.fftSize());
         mFftHopSize.setValue(p.fftHopSize());
         mMinFreq.setValue(p.minFrequency());
