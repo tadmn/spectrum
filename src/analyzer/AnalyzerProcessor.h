@@ -20,14 +20,14 @@
  * smoothing, auto-normalization), and provides data for spectrum visualization with ballistics
  * (attack/release).
  *
- * @note Currently only a channel count of 1 is supported.
+ * @note Currently, only a channel count of 1 (mono) is supported.
  *
  * Example:
  *
  * (main thread)
  * AnalyzerProcessor analyzer;
  *
- * // Usually called on the audio pipeline's `prepare` callback
+ * // Usually called on the audio pipeline's prepare callback
  * analyzer.setSampleRate(sampleRate);
  * analyzer.reset();
  *
@@ -46,11 +46,11 @@ class AnalyzerProcessor {
     /**
      * @struct Band
      * @brief Represents a frequency band with associated FFT bins and amplitude. Energy of
-     * associated bins are averaged into a dB magnitude value
+     * associated bins is averaged into a dB magnitude value.
      */
     struct Band {
         std::vector<int> bins = {};  ///< FFT bin indices that belong to this band
-        float dB = -100.f;  ///< Current amplitude of the band in dB
+        float dB = -100.f;  ///< Current amplitude of the band in dB FS
     };
 
     /**
@@ -60,31 +60,33 @@ class AnalyzerProcessor {
 
     /**
      * @brief Callback triggered when any parameter changes. This will get called when any of the
-     * `set` methods below are called.
+     * set methods below are called.
      */
     std::function<void()> onParametersChanged;
 
     /**
      * @brief Callback triggered when band configuration changes. Some parameters are considered
-     * "non-real-time"
+     * "non-real-time", requiring a heavier internal re-configuration and will trigger this callback.
      */
     std::function<void()> onBandsChanged;
 
     /**
      * @brief Returns the current spectrum line data for visualization.
      *
-     * The points will have x values on the range [0, 1], where 0.0 is the minimum frequency set
-     * via `setMinFrequency` and 1.0 is the maximum frequency set via `setMaxFrequency`. X
-     * frequency values are logarithmically spaced. The y values will be on the range
-     * [1, -infinity], where 1.0 represents the minimum dB set via `setMinDb`, the value 0.0
-     * represents 0.0 dB FS (full scale), and negative numbers represent values over 0 dB (these
-     * values do not get clamped). This range is well suited for 2d graphics, where `1.0 * height`
-     * is the bottom of the screen and `0.0 * height` is the top.
+     * The points will have x values normalized to 0.0, 1.0, where 0.0 is the minimum frequency set
+     * via setMinFrequency and 1.0 is the maximum frequency set via setMaxFrequency. X
+     * frequency values are logarithmically spaced. Note that some points with x values below 0.0
+     * and x values above 1.0 will be added. These bands are added so that the line doesn't abruptly
+     * "cutoff" at the minimum and maximum frequency. The y values will be normalized to 0.0, 1.0,
+     * where 1.0 represents the minimum dB set via setMinDb, the value 0.0 represents 0.0 dB FS
+     * (full scale), and negative numbers represent values over 0 dB (these values do not get
+     * clamped). This range is well suited for 2d graphics, where (1.0 * height) is the bottom of
+     * the screen and (0.0 * height) is the top.
      *
-     * If line smoothing is enabled (via `setLineSmoothingFactor`), then the line will have more
-     * (interpolated) points, and it will be smoother and less jagged.
+     * If line smoothing is enabled (via setLineSmoothingInterpolationSteps), then the line will
+     * have more (interpolated) points, and it will be smoother and less jagged.
      *
-     * @return Vector of points representing the spectrum (smoothed if enabled).
+     * @return Vector of points representing the spectrum.
      */
     const std::vector<tb::Point>& spectrumLine() const;
 
@@ -94,22 +96,22 @@ class AnalyzerProcessor {
      * This could be useful in case you may want to display extra information, like the peak dB
      * values for each band.
      *
-     * @return Vector of Band objects. Note that this can be less than the target number of bands
-     * set via `setTargetNumBands`.
+     * @return Vector of Band objects. Note that this vector may have a different size than the
+     * target number of bands set via setTargetNumBands.
      */
     const std::vector<Band>& bands() const noexcept { return mBands; }
 
     /**
      * @brief Sets the target number of frequency bands.
      *
-     * The actual number of bands will most likely be less. The processor will split the
+     * The actual number of bands will most likely be lower. The processor will split the
      * spectrum into logarithmically spaced bands and assign the FFT bins into each band. Bands
-     * that don't have any bins assigned to them (in the lower end of the spectrum) will be
+     * that don't have any bins assigned to them (at the lower end of the spectrum) will be
      * discarded. Furthermore, if a band has only one bin assigned to it, it will use the
      * frequency (x-axis) value of the bin and not the band. This improves accuracy in the low
      * end and reduces CPU load.
      *
-     * To get the actual number of bands, use `bands().size()`
+     * To get the actual number of bands, use bands().size().
      *
      * @param targetNumberOfBands Desired number of bands (min: 1).
      */
@@ -134,7 +136,7 @@ class AnalyzerProcessor {
     double sampleRate() const noexcept { return mSampleRate; }
 
     /**
-     * @brief Sets the FFT size (will be clamped to nearest power of 2).
+     * @brief Sets the FFT size (will be clamped to the nearest power of 2).
      * @param fftSize FFT size in samples.
      */
     void setFftSize(int fftSize);
@@ -170,7 +172,7 @@ class AnalyzerProcessor {
     float maxFrequency() const noexcept { return mMaxFrequency; }
 
     /**
-     * @brief Sets the minimum dB FS level (noise floor).
+     * @brief Sets the minimum dB FS level.
      * @param minDb Minimum dB value.
      */
     void setMinDb(float minDb);
@@ -198,7 +200,7 @@ class AnalyzerProcessor {
      *
      * This frequency will be used to auto-normalize the analyzer. When "non-real-time"
      * parameter changes are made, such as the FFT size, the analyzer will auto-normalize the
-     * output to this value, meaning that this a sine wave at 0 dB FS at this frequency should
+     * output to this value. This means that a sine wave at 0 dB FS at this frequency should
      * as much as possible correspond with 0 dB FS on the output line. This compensates for
      * differences that can affect magnitude output, such as FFT algorithm and windowing type.
      *
@@ -213,13 +215,13 @@ class AnalyzerProcessor {
     float weightingCenterFrequency() const noexcept;
 
     /**
-     * @brief Sets the line smoothing factor for visualization, reducing jaggedness.
+     * @brief Sets the number of points to interpolate for visualization, reducing jaggedness.
      *
-     * The factor will be multiplied against the number of bands to obtain the size of the output
-     * line. The band points will then be put through a spline interpolator to fit the size of that
-     * output line.
+     * numInterpolationSteps will be interpolated in between each "band point", helping to
+     * round out the line and make it more visually appealing.
      *
-     * @param factor Smoothing factor.
+     * @param numInterpolationSteps The number of interpolation points to insert in between
+     *                              each original point.
      */
     void setLineSmoothingInterpolationSteps(int numInterpolationSteps);
 
@@ -302,7 +304,7 @@ class AnalyzerProcessor {
      * @param numChannels Number of audio channels in the input (size of audioBuffers array).
      * @param numFrames Number of audio frames (samples per channel) in each buffer.
      *
-     * @note Currently only a channel count of 1 is supported.
+     * @note Currently, only a channel count of 1 is supported.
      */
     void processAudio(float** audioBuffers, int numChannels, int numFrames);
 
@@ -312,7 +314,7 @@ class AnalyzerProcessor {
      * Call this on your graphics drawing callback. The analyzer will pull the latest FFT
      * data from the audio thread and process the band magnitudes, ballistics, smoothing, etc.
      *
-     * @param deltaTimeSeconds Time elapsed since last `processAnalyzer` call in seconds.
+     * @param deltaTimeSeconds Time since the last processAnalyzer call in seconds.
      */
     void processAnalyzer(double deltaTimeSeconds);
 
@@ -340,7 +342,7 @@ class AnalyzerProcessor {
     int mLineInterpolationSteps = 4;
     tb::WindowType mWindowType = tb::WindowType::BlackmanHarris;
 
-    // "Realtime" parameters. Usually just a lightweight atomic `store`
+    // "Realtime" parameters. Usually just a lightweight atomic store
     std::atomic<int> mFftHopSize = 1024;
     std::atomic<float> mAttack = 15.f;
     std::atomic<float> mRelease = 0.85f;

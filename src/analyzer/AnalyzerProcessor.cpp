@@ -7,7 +7,7 @@
 
 namespace {
 
-// Currently we only support 1 channel.
+// Currently, we only support 1 channel.
 constexpr int kNumChannels = 1;
 
 }

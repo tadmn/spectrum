@@ -2,11 +2,19 @@
 Free, liberally licensed, 2-dimensional audio spectrum analyzer.
 
 <video
-playsInline
-muted
-disablePictureInPicture
+muted 
 src="https://github.com/user-attachments/assets/b17704a0-27c9-4b15-a315-4ad742b80c49"
 />
+
+## Features
+- Real-time FFT-based spectrum analysis with thread safety in mind
+- Logarithmically spaced bands
+- Spline interpolation to produce visually pleasing smoothed graphics
+- Auto-calibration to ensure consistency
+- Customizable frequency weighting
+- Parameters can be changed on-the-fly, making it easy to dial in the right settings for your project
+- Normalized output that allows easy integration into any 2D graphics library
+- Level ballistics controls
 
 Supported architectures:
 ```
