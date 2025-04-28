@@ -3,7 +3,7 @@ Free, liberally licensed, 2-dimensional audio spectrum analyzer.
 
 <video
 muted 
-src="https://github.com/user-attachments/assets/b17704a0-27c9-4b15-a315-4ad742b80c49"
+src="https://github.com/user-attachments/assets/3c097625-3c9d-4e45-87ed-6132d06c5752"
 />
 
 ## Features
