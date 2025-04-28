@@ -43,16 +43,32 @@ class AnalyzerFrame : public visage::Frame {
 
         const auto& line = mAnalyzerProcessor.spectrumLine();
 
-        for (int i = 0; i < line.size(); ++i) {
-            mLine->setXAt(i, line[i].x * width());
-            mLine->setYAt(i, line[i].y * height());
+        int i = 0;
+
+        if (mAnalyzerProcessor.lineSmoothingInterpolationSteps() == 0) {
+            mLine->setXAt(i, line.front().x * width());
+            mLine->setYAt(i, height());
+            i++;
+        }
+
+        for (int j = 0; j < line.size(); ++j, ++i) {
+            mLine->setXAt(i, line[j].x * width());
+            mLine->setYAt(i, line[j].y * height());
+        }
+
+        if (mAnalyzerProcessor.lineSmoothingInterpolationSteps() == 0) {
+            mLine->setXAt(i, line.back().x * width());
+            mLine->setYAt(i, height());
         }
 
         redraw();
     }
 
     void updateLine() {
-        const auto numPoints = mAnalyzerProcessor.spectrumLine().size();
+        auto numPoints = mAnalyzerProcessor.spectrumLine().size();
+        if (mAnalyzerProcessor.lineSmoothingInterpolationSteps() == 0)
+            numPoints += 2; // We're going to tether the end points ourselves
+
         if (mLine != nullptr && mLine->numPoints() == numPoints)
             return;
 
