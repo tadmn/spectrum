@@ -246,7 +246,8 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
     }
 
     if (! mSmoothedLine.empty())
-        tb::catmullRom::spline(mSmoothedLine, mBandsLine, mLineInterpolationSteps);
+        tb::catmullRom::spline(mSmoothedLine, mBandsLine, mLineInterpolationSteps,
+                               tb::catmullRom::Type::Uniform);
 }
 
 void AnalyzerProcessor::reset() {
