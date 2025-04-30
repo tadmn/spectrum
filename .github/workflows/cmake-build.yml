@@ -15,11 +15,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Install dependencies
-        run: |
-          brew update
-          brew install cmake ninja
-
       - name: Create build directory
         run: mkdir -p build
 
