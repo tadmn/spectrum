@@ -63,7 +63,7 @@ const void* getFactory(const char* factory_id) {
     }
 
     if (strcmp(factory_id, CLAP_PLUGIN_FACTORY_INFO_AUV2) == 0) {
-        static const clap_plugin_factory_as_auv2 auV2Factory = { "tadN",  // manu
+        static const clap_plugin_factory_as_auv2 auV2Factory = { "Tadn",  // manu
                                                                  "tadmn", // manu name
                                                                  getAuV2Info };
         return &auV2Factory;
