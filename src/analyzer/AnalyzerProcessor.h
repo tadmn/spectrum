@@ -65,8 +65,12 @@ class AnalyzerProcessor {
     std::function<void()> onParametersChanged;
 
     /**
-     * @brief Callback triggered when band configuration changes. Some parameters are considered
-     * "non-real-time", requiring a heavier internal re-configuration and will trigger this callback.
+     * @brief Callback triggered when band configuration changes.
+     *
+     * Some parameters are considered "non-real-time", requiring a heavier internal
+     * re-configuration and will trigger this callback. The line returned via spectrumLine() could
+     * change in size, so the graphics rendering pipeline should be listening to this callback in
+     * case it needs to update any internal structures.
      */
     std::function<void()> onBandsChanged;
 
@@ -220,14 +224,16 @@ class AnalyzerProcessor {
      * numInterpolationSteps will be interpolated in between each "band point", helping to
      * round out the line and make it more visually appealing.
      *
+     * Set numInterpolationSteps to 0 to disable line smoothing.
+     *
      * @param numInterpolationSteps The number of interpolation points to insert in between
      *                              each original point.
      */
     void setLineSmoothingInterpolationSteps(int numInterpolationSteps);
 
     /**
-     * @brief Gets the line smoothing factor.
-     * @return Current smoothing factor.
+     * @brief Gets the number of points that are interpolated between each "band point".
+     * @return Current number of interpolation points.
      */
     int lineSmoothingInterpolationSteps() const noexcept { return mLineInterpolationSteps; }
 
@@ -245,7 +251,6 @@ class AnalyzerProcessor {
 
     /**
      * @brief Sets the FFT hop size. This is the distance between each FFT.
-     *
      * @param hopSize Hop size in samples.
      */
     void setFftHopSize(int hopSize);
@@ -288,7 +293,7 @@ class AnalyzerProcessor {
      *
      * @param audio Audio buffer to analyze.
      *
-     * @note Currently only a channel count of 1 is supported.
+     * @note Currently, only a channel count of 1 is supported.
      */
     void processAudio(choc::buffer::ChannelArrayView<float> audio);
 
