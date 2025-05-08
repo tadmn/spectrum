@@ -23,7 +23,7 @@ include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 CPMAddPackage("gh:tadmn/choc#020ebce3e20628d4978e04ab23cea5fc70dea2aa")
 CPMAddPackage("gh:tadmn/dsp#7378801601d9d1aae07923f7049d30f858cd447b")
 CPMAddPackage("gh:tadmn/farbot#3cf08080cef9e7c0347fdc144e81b02f5e27a8ca")
-CPMAddPackage("gh:tadmn/FastFourier#017bd92c0301eec450cad005c0459047d1181e92")
+CPMAddPackage("gh:tadmn/FastFourier#5604ebd66f0e5a8a94780b1f3e3b03f2731cce85")
 
 add_library(spectrum-analyzer-processor STATIC src/analyzer/AnalyzerProcessor.cpp src/analyzer/AnalyzerProcessor.h)
 target_link_libraries(spectrum-analyzer-processor PUBLIC tad-bits choc dsp farbot FastFourier)
@@ -32,7 +32,7 @@ add_compiler_warnings(spectrum-analyzer-processor)
 
 if (BUILD_TESTS)
   CPMAddPackage("gh:catchorg/Catch2@3.8.1")
-  set(TEST_RUNNER spectrum_test_runner)
+  set(TEST_RUNNER testrunner)
   add_executable(${TEST_RUNNER} tests/AnalyzerProcessorTests.cpp)
   target_link_libraries(${TEST_RUNNER} PRIVATE spectrum-analyzer-processor Catch2::Catch2WithMain)
   target_include_directories(${TEST_RUNNER} PRIVATE src)
@@ -86,7 +86,7 @@ if (BUILD_PLUGIN)
 
     ENTRY_SOURCE src/plugin/SpectrumPluginEntry.cpp
 
-    BUNDLE_IDENTIFER "com.tadmn.spectrum"
+    BUNDLE_IDENTIFIER "com.tadmn.spectrum"
     BUNDLE_VERSION ${PROJECT_VERSION}
 
     COPY_AFTER_BUILD ON

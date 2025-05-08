@@ -1,0 +1,103 @@
+name: Spectrum
+
+on:
+  workflow_dispatch: # lets you run a build from the UI
+  push:
+  pull_request:
+
+# When pushing new commits, cancel any running builds on that branch
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  BUILD_TYPE: Release
+  BUILD_DIR: Builds
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  SCCACHE_GHA_ENABLED: true
+  SCCACHE_CACHE_MULTIARCH: 1
+  IPP_DIR: C:\Program Files (x86)\Intel\oneAPI\ipp\latest\lib\cmake\ipp # This is needed by the IPP cmake config
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build_and_test:
+    # don't double run on PRs
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # show all errors for each platform (vs. cancel jobs on error)
+      matrix:
+        include:
+          - name: macOS
+            os: macos-latest
+#            extra-flags: -G Ninja
+          - name: Windows
+            os: windows-latest
+
+    steps:
+      # Setup MSVC toolchain and developer command prompt (Windows)
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Cache IPP (Windows)
+        if: runner.os == 'Windows'
+        id: cache-ipp
+        uses: actions/cache@v4
+        with:
+          key: ipp-v6
+          path: C:\Program Files (x86)\Intel
+
+      - name: Install IPP (Windows)
+        if: (runner.os == 'Windows') && (steps.cache-ipp.outputs.cache-hit != 'true')
+        run: |
+          curl --output oneapi.exe https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2e89fab4-e1c7-4f14-a1ef-6cddba8c5fa7/intel-ipp-2022.0.0.796_offline.exe
+          ./oneapi.exe -s -x -f oneapi
+          ./oneapi/bootstrapper.exe -s -c --action install --components=intel.oneapi.win.ipp.devel --eula=accept -p=NEED_VS2022_INTEGRATION=1 --log-dir=.
+
+      - name: Save IPP cache (even on CI fail)
+        if: runner.os == 'Windows' && (steps.cache-ipp.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v4
+        with:
+          path: C:\Program Files (x86)\Intel
+          key: ipp-v6
+
+      - name: Install Ninja (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ninja
+
+      - name: Install macOS Deps
+        if: ${{ matrix.name == 'macOS' }}
+        run: brew install ninja
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Cache the build
+        uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: Configure
+        run: >-
+          cmake -B ${{ env.BUILD_DIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE}}
+          -G Ninja -DUSE_SANITIZER=OFF -DBUILD_PLUGIN=ON -DBUILD_TESTS=ON
+          -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache ${{ matrix.extra-flags }} .
+
+      - name: Build
+        run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
+
+      - name: Test
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          for i in {1..5}; do
+            if [ "$RUNNER_OS" == "Windows" ]; then
+              ./testrunner.exe
+            else
+              ./testrunner
+            fi
+          done
+    
