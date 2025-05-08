@@ -1,10 +1,10 @@
 
 #include "AnalyzerProcessor.h"
 
-#include <numbers>
 #include <numeric>
-#include <tb_Math.h>
+#include <perf.h>
 #include <tb_DspUtilities.h>
+#include <tb_Math.h>
 
 namespace {
 
@@ -160,6 +160,8 @@ void AnalyzerProcessor::setMinDb(float minDb) {
 }
 
 void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio) {
+    const signalsmith::perf::StopDenormals stopDenormals;
+
     tb_assert(audio.getNumChannels() == kNumChannels);
 
     // Is realtime safe as long as no "non-real-time" parameters are changed. In that case, this
@@ -196,6 +198,8 @@ void AnalyzerProcessor::processAudio(float** audioBuffers, int numChannels, int 
 }
 
 void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
+    const signalsmith::perf::StopDenormals stopDenormals;
+
     const auto attack = std::clamp(mAttack.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
     const auto release = std::clamp(mRelease.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
 
@@ -261,6 +265,8 @@ void AnalyzerProcessor::reset() {
 }
 
 void AnalyzerProcessor::updateBands() {
+    const signalsmith::perf::StopDenormals stopDenormals;
+
     const auto numBins = mFftSize / 2 + 1;
 
     mWindow = tb::window<float>(mWindowType, mFftSize);
