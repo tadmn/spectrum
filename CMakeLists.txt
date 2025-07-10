@@ -6,7 +6,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>") # Use st
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Build for 10.15")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-project(spectrum VERSION 1.0.0 LANGUAGES C CXX)
+project(spectrum VERSION 1.1.0 LANGUAGES C CXX)
 
 option(USE_SANITIZER "Build and link with the address sanitizer" OFF)
 option(BUILD_TESTS "Build unit test executable" OFF)
@@ -20,7 +20,7 @@ endif()
 CPMAddPackage("gh:tadmn/tad-bits#500124abce002a69664b3324fba8bff24556f1c4")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
-CPMAddPackage("gh:tadmn/choc#020ebce3e20628d4978e04ab23cea5fc70dea2aa")
+CPMAddPackage("gh:tadmn/choc#2f5b8627708ff4702b4fb6646fddf0c5f4a52007")
 CPMAddPackage("gh:tadmn/dsp#7378801601d9d1aae07923f7049d30f858cd447b")
 CPMAddPackage("gh:tadmn/farbot#3cf08080cef9e7c0347fdc144e81b02f5e27a8ca")
 CPMAddPackage("gh:tadmn/FastFourier#5604ebd66f0e5a8a94780b1f3e3b03f2731cce85")
@@ -49,7 +49,7 @@ if (BUILD_PLUGIN)
   set(CLAP_WRAPPER_OUTPUT_NAME "${PLUGIN_NAME}" CACHE BOOL "ClapAsVST3 Wrapper name")
   CPMAddPackage("gh:free-audio/clap-wrapper#5ba58f16a7816085d46cb8b7bb40b1eb1d9561d2")
 
-  CPMAddPackage("gh:tadmn/visage#53cf815dbd7b81942401e60cd82fcd31c32ffd7a")
+  CPMAddPackage("gh:tadmn/visage#c501ed480c55f8be54b56e54f1fcaac04198032a")
   CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
   CPMAddPackage("gh:nlohmann/json@3.11.3")
 

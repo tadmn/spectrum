@@ -1,7 +1,7 @@
 name: Spectrum
 
 on:
-  workflow_dispatch: # lets you run a build from the UI
+  workflow_dispatch: # Lets you run a build from the UI
   push:
   pull_request:
 
@@ -24,17 +24,16 @@ defaults:
 
 jobs:
   build_and_test:
-    # don't double run on PRs
+    # Don't double run on PRs
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false # show all errors for each platform (vs. cancel jobs on error)
+      fail-fast: false # Show all errors for each platform (vs. cancel jobs on error)
       matrix:
         include:
           - name: macOS
             os: macos-latest
-#            extra-flags: -G Ninja
           - name: Windows
             os: windows-latest
 
