@@ -27,6 +27,13 @@ SpectrumPlugin::SpectrumPlugin(const clap_host* host) : ClapPlugin(getDescriptor
 
 SpectrumPlugin::~SpectrumPlugin() = default;
 
+#ifdef __linux__
+void SpectrumPlugin::onPosixFd(int fd, clap_posix_fd_flags_t flags) noexcept {
+    if (mApp && mApp->window())
+        mApp->window()->processPluginFdEvents();
+}
+#endif
+
 bool SpectrumPlugin::activate(double sampleRate, uint32_t /*minFrames*/, uint32_t maxFrames) noexcept {
     mStereoMixBuffer.resize({.numChannels = 1, .numFrames = maxFrames});
     mAnalyzerProcessor.setSampleRate(sampleRate);
