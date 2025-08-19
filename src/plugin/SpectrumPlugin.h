@@ -22,6 +22,11 @@ class SpectrumPlugin : public ClapPlugin {
     explicit SpectrumPlugin(const clap_host* host);
     ~SpectrumPlugin() override;
 
+#ifdef __linux__
+    bool implementsPosixFdSupport() const noexcept override { return true; }
+    void onPosixFd(int fd, clap_posix_fd_flags_t flags) noexcept override;
+#endif
+
   protected:
     bool activate(double sampleRate, uint32_t minFrameCount, uint32_t maxFrameCount) noexcept override;
     void deactivate() noexcept override;

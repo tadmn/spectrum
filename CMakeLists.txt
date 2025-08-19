@@ -6,7 +6,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>") # Use st
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE STRING "Build for 10.15")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-project(spectrum VERSION 1.1.0 LANGUAGES C CXX)
+project(spectrum VERSION 1.2.0 LANGUAGES C CXX)
 
 option(USE_SANITIZER "Build and link with the address sanitizer" OFF)
 option(BUILD_TESTS "Build unit test executable" OFF)
@@ -23,11 +23,11 @@ include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 CPMAddPackage("gh:tadmn/choc#2f5b8627708ff4702b4fb6646fddf0c5f4a52007")
 CPMAddPackage("gh:tadmn/dsp#7378801601d9d1aae07923f7049d30f858cd447b")
 CPMAddPackage("gh:tadmn/farbot#3cf08080cef9e7c0347fdc144e81b02f5e27a8ca")
-CPMAddPackage("gh:tadmn/FastFourier#5604ebd66f0e5a8a94780b1f3e3b03f2731cce85")
+CPMAddPackage("gh:tadmn/FastFourier#453106d9d2995aaca8cf53ea556749c1e07bdb05")
 
 add_library(spectrum-analyzer-processor STATIC src/analyzer/AnalyzerProcessor.cpp src/analyzer/AnalyzerProcessor.h)
 target_link_libraries(spectrum-analyzer-processor PUBLIC tad-bits choc dsp farbot FastFourier)
-target_include_directories(spectrum-analyzer-processor PUBLIC src/Analyzer)
+target_include_directories(spectrum-analyzer-processor PUBLIC src/analyzer)
 add_compiler_warnings(spectrum-analyzer-processor)
 
 if (BUILD_TESTS)
@@ -49,7 +49,7 @@ if (BUILD_PLUGIN)
   set(CLAP_WRAPPER_OUTPUT_NAME "${PLUGIN_NAME}" CACHE BOOL "ClapAsVST3 Wrapper name")
   CPMAddPackage("gh:free-audio/clap-wrapper#5ba58f16a7816085d46cb8b7bb40b1eb1d9561d2")
 
-  CPMAddPackage("gh:tadmn/visage#c501ed480c55f8be54b56e54f1fcaac04198032a")
+  CPMAddPackage("gh:tadmn/visage#31a6e393dfe62d0c5973a02641bd44e78f1a2485")
   CPMAddPackage("gh:Neargye/magic_enum@0.9.7")
   CPMAddPackage("gh:nlohmann/json@3.11.3")
 

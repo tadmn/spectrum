@@ -20,6 +20,7 @@ Supported architectures:
 ```
 macOS arm64
 Windows x86_64
+Linux x86_64 (Tested on Ubuntu 24.04)
 ``` 
 
 ## Build Options
@@ -41,8 +42,18 @@ Studio on the supported architectures.
 No special requirements needed, just a cmake build environment.
 
 ### Windows (x86_64)
-You will need to follow the instructions at https://github.com/tadmn/FastFourier to install the Intel IPP library files.
-These library files are used for the Intel IPP FFT.
+You will need to follow the instructions in the README at https://github.com/tadmn/FastFourier to install the Intel IPP
+library files. These library files are used for the Intel IPP FFT.
+
+### Linux (x86_64)
+You will need to follow the instructions in the README at https://github.com/tadmn/FastFourier to install the Intel IPP
+library files. These library files are used for the Intel IPP FFT.
+
+You will also need to install the following dependencies.
+```
+sudo apt-get update
+sudo apt install libgl1-mesa-dev libxrandr-dev
+```
 
 ## What about AU & VST3 audio plugins?
 `clap-wrapper` is used in this project, however only the `CLAP` target is set to be built. The `VST3` & `AUV2`
