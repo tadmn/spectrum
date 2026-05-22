@@ -1,0 +1,132 @@
+name: Build
+
+on:
+  workflow_call:
+
+env:
+  BUILD_TYPE: Release
+  BUILD_DIR: Builds
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+  SCCACHE_GHA_ENABLED: true
+  SCCACHE_CACHE_MULTIARCH: 1
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # Show all errors for each platform (vs. cancel jobs on error)
+      matrix:
+        include:
+          - name: macOS
+            os: macos-15
+            artifact_id: macos
+          - name: Windows
+            os: windows-2025
+            artifact_id: windows
+          - name: Linux
+            os: ubuntu-24.04
+            artifact_id: linux
+
+    steps:
+      - name: Setup Windows dev environment
+        if: runner.os == 'Windows'
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Download IPP (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          wget -O- https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB | gpg --dearmor | sudo tee /usr/share/keyrings/oneapi-archive-keyring.gpg > /dev/null
+          echo "deb [signed-by=/usr/share/keyrings/oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" | sudo tee /etc/apt/sources.list.d/oneAPI.list
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt install libgl1-mesa-dev libxrandr-dev intel-oneapi-ipp-devel xvfb
+
+      - name: Cache IPP (Windows)
+        if: runner.os == 'Windows'
+        id: cache-ipp
+        uses: actions/cache@v6
+        with:
+          key: ipp-v6
+          path: C:\Program Files (x86)\Intel
+
+      - name: Install IPP (Windows)
+        if: (runner.os == 'Windows') && (steps.cache-ipp.outputs.cache-hit != 'true')
+        run: |
+          curl --output oneapi.exe https://registrationcenter-download.intel.com/akdlm/IRC_NAS/2e89fab4-e1c7-4f14-a1ef-6cddba8c5fa7/intel-ipp-2022.0.0.796_offline.exe
+          ./oneapi.exe -s -x -f oneapi
+          ./oneapi/bootstrapper.exe -s -c --action install --components=intel.oneapi.win.ipp.devel --eula=accept -p=NEED_VS2022_INTEGRATION=1 --log-dir=.
+
+      - name: Save IPP cache (even on CI fail)
+        if: runner.os == 'Windows' && (steps.cache-ipp.outputs.cache-hit != 'true')
+        uses: actions/cache/save@v6
+        with:
+          key: ipp-v6
+          path: C:\Program Files (x86)\Intel
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Determine sccache usage
+        id: sccache
+        run: |
+          if [[ "${{ github.ref }}" != refs/tags/v* && "${{ github.event_name }}" != "workflow_dispatch" ]]; then
+            echo "use=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "use=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cache build (skipped for version tags and manual runs)
+        if: steps.sccache.outputs.use == 'true'
+        uses: mozilla-actions/sccache-action@v0.0.10
+
+      - name: Configure
+        run: >-
+          cmake -B ${{ env.BUILD_DIR }} -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
+          -G Ninja -DUSE_SANITIZER=OFF -DBUILD_TESTS=ON
+          ${{ steps.sccache.outputs.use == 'true' && '-DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache' || '' }} .
+
+      - name: Build
+        run: cmake --build ${{ env.BUILD_DIR }} --config ${{ env.BUILD_TYPE }}
+
+      # Plugin bundles contain symlinks (macOS .vst3/.component packages) and
+      # depend on exact executable bits for the ad-hoc code signature to stay
+      # valid. actions/upload-artifact re-zips its payload and can silently
+      # flatten symlinks or drop the +x bit, which breaks `codesign --verify`
+      # later on. Tar the artifacts dir ourselves so permissions/links survive.
+      - name: Archive plugin artifacts
+        working-directory: ${{ env.BUILD_DIR }}
+        run: tar -czf plugin-artifacts.tar.gz -C artifacts .
+
+      - name: Upload plugin artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_id }}-plugins
+          path: ${{ env.BUILD_DIR }}/plugin-artifacts.tar.gz
+          retention-days: 1
+
+      - name: Locate test runner binary
+        id: testrunner
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "path=${{ env.BUILD_DIR }}/testrunner.exe" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=${{ env.BUILD_DIR }}/testrunner" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload test runner
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact_id }}-testrunner
+          path: ${{ steps.testrunner.outputs.path }}
+          retention-days: 1

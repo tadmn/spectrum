@@ -1,0 +1,246 @@
+name: Test
+
+on:
+  workflow_call:
+
+env:
+  BUILD_DIR: Builds
+  CLAP_VALIDATOR_VERSION: 0.3.2
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false # Show all errors for each platform (vs. cancel jobs on error)
+      matrix:
+        include:
+          - name: macOS
+            os: macos-15
+            artifact_id: macos
+          - name: Windows
+            os: windows-2025
+            artifact_id: windows
+          - name: Linux
+            os: ubuntu-24.04
+            artifact_id: linux
+
+    steps:
+      # These are the runtime counterparts of the Linux build dependencies
+      # (GL/X11 libs the visage-based GUI needs to open, and Xvfb to give
+      # pluginval / clap-validator a display to open the editor against).
+      # IPP is statically linked, so it's only needed at build time and is
+      # deliberately not installed here.
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt install libgl1-mesa-dev libxrandr-dev xvfb
+
+      - name: Download test runner
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.artifact_id }}-testrunner
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Download plugin artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.artifact_id }}-plugins
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Extract plugin artifacts
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          mkdir -p artifacts
+          tar -xzf plugin-artifacts.tar.gz -C artifacts
+
+      - name: Mark test runner executable
+        if: runner.os != 'Windows'
+        run: chmod +x ${{ env.BUILD_DIR }}/testrunner
+
+      - name: Test
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          for i in {1..5}; do
+            if [ "$RUNNER_OS" == "Windows" ]; then
+              ./testrunner.exe
+            else
+              ./testrunner
+            fi
+          done
+
+      - name: Download pluginval
+        run: |
+          BASE_URL="https://github.com/Tracktion/pluginval/releases/download/v1.0.4"
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            OS_SUFFIX="macOS"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            OS_SUFFIX="Windows"
+          else
+            OS_SUFFIX="Linux"
+          fi
+          curl -L -o pluginval.zip "${BASE_URL}/pluginval_${OS_SUFFIX}.zip"
+          unzip -o pluginval.zip -d pluginval-bin
+
+      - name: Install AU components for macOS AU discovery
+        if: runner.os == 'macOS'
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          # AU (unlike VST3/CLAP) isn't found by pointing a validator at an
+          # arbitrary path - macOS discovers AUs via the Component Manager,
+          # which only scans well-known plugin directories. Install any
+          # .component bundles there so auval/pluginval can actually see them.
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          find artifacts -iname "*.component" -exec cp -R {} ~/Library/Audio/Plug-Ins/Components/ \;
+
+          # Force macOS to rescan the AU cache
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+
+          echo "Installed AU components:"
+          ls -la ~/Library/Audio/Plug-Ins/Components/
+
+          echo "Verifying AU registration with auval..."
+          for component in ~/Library/Audio/Plug-Ins/Components/*.component; do
+            [ -e "$component" ] || continue
+            plist="$component/Contents/Info.plist"
+            if [ -f "$plist" ]; then
+              # Print the manufacturer/subtype/type codes so auval -v has something to check
+              /usr/libexec/PlistBuddy -c "Print :AudioComponents" "$plist" 2>/dev/null || true
+            fi
+          done
+          auval -a || true
+
+      - name: Validate plugins with pluginval
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            PLUGINVAL="$GITHUB_WORKSPACE/pluginval-bin/pluginval.app/Contents/MacOS/pluginval"
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            PLUGINVAL="$GITHUB_WORKSPACE/pluginval-bin/pluginval.exe"
+          else
+            PLUGINVAL="$GITHUB_WORKSPACE/pluginval-bin/pluginval"
+          fi
+          chmod +x "$PLUGINVAL" || true
+
+          ARTIFACT_DIR="artifacts"
+
+          # Collect all VST3 bundles/files (every platform builds VST3)
+          PLUGINS=()
+          while IFS= read -r -d '' f; do
+            PLUGINS+=("$f")
+          done < <(find "$ARTIFACT_DIR" -iname "*.vst3" -print0)
+
+          # AU (AUV2) only exists on macOS. Validate the INSTALLED copy
+          # (from ~/Library/Audio/Plug-Ins/Components), not the one still
+          # sitting in artifacts/, since that's the only copy macOS's
+          # Component Manager actually knows about.
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            while IFS= read -r -d '' f; do
+              PLUGINS+=("$f")
+            done < <(find "$HOME/Library/Audio/Plug-Ins/Components" -maxdepth 1 -iname "*.component" -print0)
+          fi
+
+          if [ ${#PLUGINS[@]} -eq 0 ]; then
+            echo "No plugin artifacts found to validate!"
+            exit 1
+          fi
+
+          echo "Found ${#PLUGINS[@]} plugin(s) to validate:"
+          printf '  %s\n' "${PLUGINS[@]}"
+
+          # GitHub's hosted Windows runners only expose a software/virtual
+          # display adapter (no real GPU), which is prone to crashing
+          # visage's renderer on GUI tests (e.g. opening the editor while
+          # audio is processing concurrently). Skip GUI tests there.
+          # Linux runners have no display server at all, so wrap pluginval
+          # in Xvfb (virtual X server) instead of skipping GUI tests, so the
+          # editor can actually open against something.
+          EXTRA_ARGS=()
+          RUN_PREFIX=()
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            echo "Skipping GUI tests on Windows (no hardware-accelerated display on hosted runners)"
+            EXTRA_ARGS+=(--skip-gui-tests)
+          elif [ "$RUNNER_OS" == "Linux" ]; then
+            echo "Running under Xvfb on Linux (no display server on hosted runners)"
+            RUN_PREFIX=(xvfb-run --auto-servernum)
+          fi
+
+          FAILED_PLUGINS=()
+
+          for plugin in "${PLUGINS[@]}"; do
+            echo "::group::Validating $plugin"
+            if "${RUN_PREFIX[@]}" "$PLUGINVAL" --strictness-level 10 --validate-in-process "${EXTRA_ARGS[@]}" "$plugin"; then
+              echo "PASSED: $plugin"
+            else
+              echo "FAILED: $plugin"
+              FAILED_PLUGINS+=("$plugin")
+            fi
+            echo "::endgroup::"
+          done
+
+          if [ ${#FAILED_PLUGINS[@]} -ne 0 ]; then
+            echo ""
+            echo "pluginval validation failed for ${#FAILED_PLUGINS[@]} plugin(s):"
+            printf '  %s\n' "${FAILED_PLUGINS[@]}"
+            exit 1
+          fi
+
+          echo "All plugins passed pluginval validation."
+
+      - name: Download clap-validator
+        if: hashFiles(format('{0}/artifacts/**/*.clap', env.BUILD_DIR)) != ''
+        run: |
+          mkdir -p clap-validator-bin
+          BASE_URL="https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}"
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            curl -L -o clap-validator.tar.gz "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-macos-universal.tar.gz"
+            tar -xzf clap-validator.tar.gz -C clap-validator-bin
+            # macOS archive nests the binary under binaries/
+            mv clap-validator-bin/binaries/clap-validator clap-validator-bin/clap-validator
+          elif [ "$RUNNER_OS" == "Windows" ]; then
+            curl -L -o clap-validator.zip "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip"
+            unzip -o clap-validator.zip -d clap-validator-bin
+          else
+            curl -L -o clap-validator.tar.gz "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz"
+            tar -xzf clap-validator.tar.gz -C clap-validator-bin
+          fi
+          chmod +x clap-validator-bin/clap-validator* || true
+
+      - name: Validate plugins with clap-validator
+        if: hashFiles(format('{0}/artifacts/**/*.clap', env.BUILD_DIR)) != ''
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            CLAP_VALIDATOR="$GITHUB_WORKSPACE/clap-validator-bin/clap-validator.exe"
+          else
+            CLAP_VALIDATOR="$GITHUB_WORKSPACE/clap-validator-bin/clap-validator"
+          fi
+          chmod +x "$CLAP_VALIDATOR" || true
+
+          ARTIFACT_DIR="artifacts"
+
+          PLUGINS=()
+          while IFS= read -r -d '' f; do
+            PLUGINS+=("$f")
+          done < <(find "$ARTIFACT_DIR" -iname "*.clap" -print0)
+
+          if [ ${#PLUGINS[@]} -eq 0 ]; then
+            echo "No CLAP artifacts found under $ARTIFACT_DIR to validate!"
+            exit 1
+          fi
+
+          echo "Found ${#PLUGINS[@]} plugin(s) to validate:"
+          printf '  %s\n' "${PLUGINS[@]}"
+
+          # Same GUI/display caveats as the pluginval step above: no GPU on
+          # hosted Windows runners, no display server at all on Linux.
+          RUN_PREFIX=()
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            echo "Running under Xvfb on Linux (no display server on hosted runners)"
+            RUN_PREFIX=(xvfb-run --auto-servernum)
+          fi
+
+          "${RUN_PREFIX[@]}" "$CLAP_VALIDATOR" validate "${PLUGINS[@]}"

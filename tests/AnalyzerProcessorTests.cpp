@@ -2,112 +2,88 @@
 
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
-#include <tb_DspUtilities.h>
+#include <choc/audio/choc_Oscillators.h>
 
-// Tests parameter setting behavior including callback triggers
+namespace {
+
+choc::buffer::ChannelArrayBuffer<float> makeSineWave(double frequency, double sampleRate, uint32_t numFrames) {
+    return choc::oscillator::createChannelArraySine<float>(
+        { .numChannels = 1, .numFrames = numFrames },
+        frequency, sampleRate);
+}
+
+}
+
+// Tests parameter setting behavior
 TEST_CASE("AnalyzerProcessor parameter setters", "[analyzer]") {
     AnalyzerProcessor analyzer;
-    bool parametersChanged = false;
-    bool bandsChanged = false;
-
-    // Set up callbacks to track when parameters and bands are changed
-    analyzer.onParametersChanged = [&]() { parametersChanged = true; };
-    analyzer.onBandsChanged = [&]() { bandsChanged = true; };
 
     SECTION("Real-time safe parameters") {
-        parametersChanged = false;
-        bandsChanged = false;
-
-        // Verify that changing real-time safe parameters triggers only the parameters changed callback
         analyzer.setMinDb(-90.f);
-        REQUIRE(analyzer.minDb() == Catch::Approx(-90.f));
-        REQUIRE(parametersChanged);
-        REQUIRE_FALSE(bandsChanged);
+        REQUIRE(analyzer.minDb() == -90.f);
 
-        parametersChanged = false;
         analyzer.setAttackRate(20.f);
-        REQUIRE(analyzer.attackRate() == Catch::Approx(20.f));
-        REQUIRE(parametersChanged);
-        REQUIRE_FALSE(bandsChanged);
+        REQUIRE(analyzer.attackRate() == 20.f);
 
-        parametersChanged = false;
         analyzer.setReleaseRate(0.75f);
-        REQUIRE(analyzer.releaseRate() == Catch::Approx(0.75f));
-        REQUIRE(parametersChanged);
-        REQUIRE_FALSE(bandsChanged);
-
-        parametersChanged = false;
-        analyzer.setFftHopSize(512);
-        REQUIRE(analyzer.fftHopSize() == 512);
-        REQUIRE(parametersChanged);
-        REQUIRE_FALSE(bandsChanged);
+        REQUIRE(analyzer.releaseRate() == 0.75f);
     }
 
     SECTION("Non-real-time parameters") {
-        parametersChanged = false;
-        bandsChanged = false;
-
-        // Verify that changing non-real-time parameters triggers both callbacks
-        analyzer.setTargetNumBands(256);
-        REQUIRE(analyzer.targetNumBands() == 256);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setSampleRate(48'000.0);
-        REQUIRE(analyzer.sampleRate() == 48'000.0);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setFftSize(8'192);
-        REQUIRE(analyzer.fftSize() == 8'192);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setMinFrequency(20.f);
-        REQUIRE(analyzer.minFrequency() == 20.f);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setMaxFrequency(20'000.f);
-        REQUIRE(analyzer.maxFrequency() == 20'000.f);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setLineSmoothingInterpolationSteps(12);
-        REQUIRE(analyzer.lineSmoothingInterpolationSteps() == 12);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setWindowType(tb::WindowType::Hann);
-        REQUIRE(analyzer.windowType() == tb::WindowType::Hann);
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setWeightingDbPerOctave(3.f);
-        REQUIRE(analyzer.weightingDbPerOctave() == Catch::Approx(3.f));
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
-
-        parametersChanged = false;
-        bandsChanged = false;
-        analyzer.setWeightingCenterFrequency(2'000.f);
-        REQUIRE(analyzer.weightingCenterFrequency() == Catch::Approx(2'000.f));
-        REQUIRE(parametersChanged);
-        REQUIRE(bandsChanged);
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.target_num_bands = 256;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().target_num_bands == 256);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.sample_rate = 48'000.0;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().sample_rate == 48'000.0);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.fft_size = 8'192;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().fft_size == 8'192);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.min_frequency = 20.f;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().min_frequency == 20.f);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.max_frequency = 20'000.f;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().max_frequency == 20'000.f);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.line_interpolation_steps = 12;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().line_interpolation_steps == 12);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.window_type = tb::WindowType::Hann;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().window_type == tb::WindowType::Hann);
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.weighting_db_per_octave = 3.f;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().weighting_db_per_octave == Catch::Approx(3.f));
+        }
+        {
+            auto params = analyzer.nonRealtimeParameters();
+            params.weighting_center_frequency = 2'000.f;
+            analyzer.setNonRealtimeParameters(params);
+            REQUIRE(analyzer.nonRealtimeParameters().weighting_center_frequency == Catch::Approx(2'000.f));
+        }
     }
 }
 
@@ -115,18 +91,21 @@ TEST_CASE("AnalyzerProcessor parameter setters", "[analyzer]") {
 TEST_CASE("AnalyzerProcessor audio processing", "[analyzer]") {
     AnalyzerProcessor analyzer;
 
-    // Configure analyzer with test parameters
-    analyzer.setSampleRate(44'100.0);
-    analyzer.setFftSize(1'024);
-    analyzer.setFftHopSize(512);
-    analyzer.setMinFrequency(20.f);
-    analyzer.setMaxFrequency(20'000.f);
-    analyzer.setTargetNumBands(128);
+    {
+        AnalyzerProcessor::NonRealtimeParameters params;
+        params.sample_rate = 44'100.0;
+        params.fft_size = 1'024;
+        params.min_frequency = 20.f;
+        params.max_frequency = 20'000.f;
+        params.target_num_bands = 128;
+        analyzer.setNonRealtimeParameters(params);
+    }
 
     SECTION("Process sine wave at specific frequency") {
         constexpr float testFreq = 1'000.f; // Test with 1kHz sine wave
 
-        analyzer.processAudio(tb::makeSineWave(testFreq, analyzer.sampleRate(), 1, 4'096));
+        const auto& p = analyzer.nonRealtimeParameters();
+        analyzer.processAudio(makeSineWave(testFreq, p.sample_rate, 4'096));
 
         // Run analyzer multiple times to ensure stable line data
         for (int i = 0; i < 10; i++)
@@ -144,11 +123,11 @@ TEST_CASE("AnalyzerProcessor audio processing", "[analyzer]") {
 
         for (const auto& point : line) {
             // Convert normalized x position to frequency using logarithmic scale
-            const float freq = analyzer.minFrequency() *
-                               std::pow(analyzer.maxFrequency() / analyzer.minFrequency(), point.x);
+            const float freq = p.min_frequency *
+                               std::pow(p.max_frequency / p.min_frequency, point.x);
 
             // Track the peak (y values are inverted in the spectrumLine)
-            const auto peak = 1.f - point.y;
+            const auto peak = point.y;
             if (peak > peakMagnitude) {
                 peakMagnitude = peak;
                 peakFreq = freq;
@@ -156,7 +135,7 @@ TEST_CASE("AnalyzerProcessor audio processing", "[analyzer]") {
         }
 
         // Calculate acceptable tolerance based on FFT resolution
-        const float binWidth = static_cast<float>(analyzer.sampleRate()) / analyzer.fftSize();
+        const float binWidth = static_cast<float>(p.sample_rate) / p.fft_size;
         const float tolerance = binWidth * 2.f;
 
         INFO("Peak frequency: " << peakFreq << ", Expected: " << testFreq);
@@ -171,7 +150,12 @@ TEST_CASE("AnalyzerProcessor audio processing", "[analyzer]") {
 TEST_CASE("AnalyzerProcessor reset functionality", "[analyzer]") {
     AnalyzerProcessor analyzer;
 
-    analyzer.processAudio(tb::makeSineWave(1'000.f, analyzer.sampleRate(), 1, 4'096, 0.5f));
+    {
+        const auto& p = analyzer.nonRealtimeParameters();
+        auto sin = makeSineWave(1'000.f, p.sample_rate, 4'096);
+        choc::buffer::applyGain(sin, 0.5f);
+        analyzer.processAudio(sin);
+    }
 
     // Process analyzer to populate bands
     for (int i = 0; i < 10; i++)
@@ -199,11 +183,15 @@ TEST_CASE("AnalyzerProcessor reset functionality", "[analyzer]") {
 TEST_CASE("AnalyzerProcessor frequency band distribution", "[analyzer]") {
     AnalyzerProcessor analyzer;
 
-    analyzer.setSampleRate(44'100.0);
-    analyzer.setFftSize(2'048);
-    analyzer.setMinFrequency(20.f);
-    analyzer.setMaxFrequency(20'000.f);
-    analyzer.setTargetNumBands(64);
+    {
+        AnalyzerProcessor::NonRealtimeParameters params;
+        params.sample_rate = 44'100.0;
+        params.fft_size = 2'048;
+        params.min_frequency = 20.f;
+        params.max_frequency = 20'000.f;
+        params.target_num_bands = 64;
+        analyzer.setNonRealtimeParameters(params);
+    }
 
     analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
     analyzer.processAnalyzer(0.01);
@@ -212,7 +200,7 @@ TEST_CASE("AnalyzerProcessor frequency band distribution", "[analyzer]") {
 
     // Validate band formation
     REQUIRE_FALSE(bands.empty());
-    REQUIRE(bands.size() <= analyzer.targetNumBands());
+    REQUIRE(bands.size() <= static_cast<size_t>(analyzer.nonRealtimeParameters().target_num_bands));
 
     // Verify each band has at least one bin
     for (const auto& band : bands) {
@@ -230,7 +218,9 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
     AnalyzerProcessor analyzer;
 
     SECTION("No smoothing") {
-        analyzer.setLineSmoothingInterpolationSteps(0);
+        auto params = analyzer.nonRealtimeParameters();
+        params.line_interpolation_steps = 0;
+        analyzer.setNonRealtimeParameters(params);
 
         analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
         analyzer.processAnalyzer(0.01);
@@ -245,7 +235,9 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
 
     SECTION("High smoothing") {
         // Higher smoothing should produce significantly more points
-        analyzer.setLineSmoothingInterpolationSteps(8);
+        auto params = analyzer.nonRealtimeParameters();
+        params.line_interpolation_steps = 8;
+        analyzer.setNonRealtimeParameters(params);
 
         analyzer.processAudio(choc::buffer::ChannelArrayBuffer<float>(1, 4'096));
         analyzer.processAnalyzer(0.01);

@@ -1,0 +1,63 @@
+name: Package Linux
+
+on:
+  workflow_call:
+
+env:
+  PLUGIN_NAME: Spectrum
+
+jobs:
+  package:
+    name: Package Linux Artifacts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Get plugin version
+        id: version
+        run: |
+          VERSION=$(grep -m1 'project(spectrum VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "Could not determine plugin version from CMakeLists.txt"
+            exit 1
+          fi
+          echo "Detected version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: linux-plugins
+          path: build/artifacts-raw
+
+      - name: Extract plugin artifacts
+        working-directory: build/artifacts-raw
+        run: |
+          mkdir -p ../artifacts
+          tar -xzf plugin-artifacts.tar.gz -C ../artifacts
+
+      - name: Stage package contents
+        run: |
+          set -euo pipefail
+          STAGE_DIR="package/Spectrum"
+          mkdir -p "$STAGE_DIR"
+
+          cp -r build/artifacts/Spectrum.clap "$STAGE_DIR/"
+          cp -r build/artifacts/Spectrum.vst3 "$STAGE_DIR/"
+
+          cp .github/installer/linux/scripts/install.sh "$STAGE_DIR/install.sh"
+          chmod +x "$STAGE_DIR/install.sh"
+
+      - name: Create archive
+        working-directory: package
+        run: |
+          set -euo pipefail
+          tar -czf "../${{ env.PLUGIN_NAME }}-Linux.tar.gz" Spectrum
+
+      - name: Upload packaged artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PLUGIN_NAME }}-Linux
+          path: ${{ env.PLUGIN_NAME }}-Linux.tar.gz
+          if-no-files-found: error

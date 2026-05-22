@@ -1,0 +1,90 @@
+name: Package macOS
+
+on:
+  workflow_call:
+
+env:
+  BUILD_DIR: Builds
+  PLUGIN_NAME: Spectrum
+
+jobs:
+  package_macos:
+    name: macOS Installer
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Get plugin version
+        id: version
+        run: |
+          VERSION=$(grep -m1 'project(spectrum VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "Could not determine plugin version from CMakeLists.txt"
+            exit 1
+          fi
+          echo "Detected version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Download macOS plugin artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: macos-plugins
+          path: ${{ env.BUILD_DIR }}
+
+      - name: Extract plugin artifacts
+        working-directory: ${{ env.BUILD_DIR }}
+        run: |
+          mkdir -p artifacts
+          tar -xzf plugin-artifacts.tar.gz -C artifacts
+
+      - name: Build .pkg installer
+        run: |
+          chmod +x .github/installer/mac/scripts/build-pkg.sh
+          .github/installer/mac/scripts/build-pkg.sh "${{ env.BUILD_DIR }}/artifacts" "${{ env.PLUGIN_NAME }}-macOS.pkg" "${{ steps.version.outputs.version }}" "${{ steps.version.outputs.version }}.${{ github.run_id }}"
+
+      - name: Simulate a fresh download (attach quarantine)
+        run: xattr -w com.apple.quarantine "0081;$(date +%s);Safari;" "${{ env.PLUGIN_NAME }}-macOS.pkg"
+
+      - name: Check Gatekeeper's assessment (informational)
+        run: |
+          echo "Expected to report 'rejected' for an ad-hoc-signed, unnotarized"
+          echo "pkg -- that's the same message real users will see. Captured here"
+          echo "so it's visible in logs and so we notice if the *reason* text"
+          echo "changes between macOS versions."
+          spctl -a -vv -t install "${{ env.PLUGIN_NAME }}-macOS.pkg" || true
+
+      - name: Install headlessly (tests payload + postinstall script, not the GUI Gatekeeper dialog)
+        run: sudo installer -pkg "${{ env.PLUGIN_NAME }}-macOS.pkg" -target /
+
+      - name: Verify plugin files landed in the right place
+        run: |
+          test -d "/Library/Audio/Plug-Ins/VST3/Spectrum.vst3"
+          test -d "/Library/Audio/Plug-Ins/Components/Spectrum.component"
+          test -d "/Library/Audio/Plug-Ins/CLAP/Spectrum.clap"
+
+      - name: Verify postinstall cleared quarantine
+        run: |
+          for f in "/Library/Audio/Plug-Ins/VST3/Spectrum.vst3" "/Library/Audio/Plug-Ins/Components/Spectrum.component" "/Library/Audio/Plug-Ins/CLAP/Spectrum.clap"; do
+            if xattr -p com.apple.quarantine "$f" > /dev/null 2>&1; then
+              echo "FAIL: quarantine flag still present on $f"
+              exit 1
+            fi
+          done
+          echo "Quarantine cleared correctly on all bundles."
+
+      - name: Verify ad-hoc signature still valid post-install
+        run: |
+          codesign --verify --deep --strict "/Library/Audio/Plug-Ins/VST3/Spectrum.vst3"
+          codesign --verify --deep --strict "/Library/Audio/Plug-Ins/Components/Spectrum.component"
+          codesign --verify --deep --strict "/Library/Audio/Plug-Ins/CLAP/Spectrum.clap"
+
+      - name: Upload pkg as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PLUGIN_NAME }}-macOS
+          path: ${{ env.PLUGIN_NAME }}-macOS.pkg
+          if-no-files-found: error

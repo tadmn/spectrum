@@ -1,0 +1,174 @@
+name: Package Windows
+
+on:
+  workflow_call:
+
+env:
+  PLUGIN_NAME: Spectrum
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  package_windows:
+    name: Windows Installer
+    runs-on: windows-2025
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Download Windows plugin artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: windows-plugins
+          path: build-artifacts
+
+      - name: Extract plugin artifacts
+        working-directory: build-artifacts
+        run: |
+          mkdir -p artifacts
+          tar -xzf plugin-artifacts.tar.gz -C artifacts
+
+      - name: Get plugin version
+        id: version
+        run: |
+          VERSION=$(grep -m1 'project(spectrum VERSION' CMakeLists.txt | sed -E 's/.*VERSION ([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          if [ -z "$VERSION" ]; then
+            echo "Could not determine plugin version from CMakeLists.txt"
+            exit 1
+          fi
+          echo "Detected version: $VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Locate plugin artifacts
+        id: artifacts
+        run: |
+          VST3_PATH=$(find build-artifacts/artifacts -iname "*.vst3" -type f | head -1)
+          CLAP_PATH=$(find build-artifacts/artifacts -iname "*.clap" -type f | head -1)
+
+          if [ -z "$VST3_PATH" ]; then
+            echo "No .vst3 file found in downloaded artifacts"
+            exit 1
+          fi
+          if [ -z "$CLAP_PATH" ]; then
+            echo "No .clap file found in downloaded artifacts"
+            exit 1
+          fi
+
+          echo "VST3: $VST3_PATH"
+          echo "CLAP: $CLAP_PATH"
+
+          echo "vst3_path=$VST3_PATH" >> "$GITHUB_OUTPUT"
+          echo "clap_path=$CLAP_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Write Inno Setup script
+        run: |
+          mkdir -p installer
+          cat > installer/installer.iss << 'EOF'
+          #ifndef MyAppVersion
+            #define MyAppVersion "0.0.0"
+          #endif
+          #ifndef VST3Path
+            #define VST3Path "missing.vst3"
+          #endif
+          #ifndef ClapPath
+            #define ClapPath "missing.clap"
+          #endif
+
+          #define MyAppName "Spectrum"
+          #define MyAppPublisher "tadmn"
+
+          [Setup]
+          AppId={{4C6B2A1E-2F3D-4A6B-9C6E-7D8F1A2B3C4D}
+          AppName={#MyAppName}
+          AppVersion={#MyAppVersion}
+          AppPublisher={#MyAppPublisher}
+          DefaultDirName={commoncf}
+          DisableDirPage=yes
+          DisableProgramGroupPage=yes
+          OutputBaseFilename={#MyAppName}-Windows
+          OutputDir=installer_output
+          Compression=lzma2
+          SolidCompression=yes
+          ArchitecturesAllowed=x64
+          ArchitecturesInstallIn64BitMode=x64
+          PrivilegesRequired=admin
+          WizardStyle=modern
+          UninstallDisplayIcon={uninstallexe}
+
+          [Components]
+          Name: "vst3"; Description: "VST3 Plugin"; Types: full custom; Flags: checkablealone
+          Name: "clap"; Description: "CLAP Plugin"; Types: full custom; Flags: checkablealone
+
+          [Types]
+          Name: "full"; Description: "Full installation"
+          Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+          [Files]
+          Source: "{#VST3Path}"; DestDir: "{commoncf}\VST3"; Flags: ignoreversion; Components: vst3
+          Source: "{#ClapPath}"; DestDir: "{commoncf}\CLAP"; Flags: ignoreversion; Components: clap
+
+          [Code]
+          procedure CurStepChanged(CurStep: TSetupStep);
+          begin
+            if CurStep = ssPostInstall then
+            begin
+              MsgBox('Ableton Live users:' + #13#10#13#10 +
+                'Right-click the Spectrum plugin in Live''s plugin browser ' +
+                'and disable "Auto Scaled Plug-In Window" to ensure the UI displays correctly.',
+                mbInformation, MB_OK);
+            end;
+          end;
+          EOF
+
+      - name: Compile installer
+        env:
+          MSYS2_ARG_CONV_EXCL: "*"
+        run: |
+          VST3_WIN=$(cygpath -m "${{ github.workspace }}/${{ steps.artifacts.outputs.vst3_path }}")
+          CLAP_WIN=$(cygpath -m "${{ github.workspace }}/${{ steps.artifacts.outputs.clap_path }}")
+
+          if [ -z "$VST3_WIN" ] || [ -z "$CLAP_WIN" ]; then
+            echo "Resolved Windows paths are empty — aborting"
+            exit 1
+          fi
+
+          echo "VST3 (win): $VST3_WIN"
+          echo "CLAP (win): $CLAP_WIN"
+
+          ISCC_ARGS=(
+            "/DMyAppVersion=${{ steps.version.outputs.version }}"
+            "/DVST3Path=$VST3_WIN"
+            "/DClapPath=$CLAP_WIN"
+            "installer/installer.iss"
+          )
+          "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "${ISCC_ARGS[@]}"
+
+      - name: Verify installer was created
+        id: verify_installer
+        run: |
+          OUT="installer/installer_output/${{ env.PLUGIN_NAME }}-Windows.exe"
+          if [ ! -f "$OUT" ]; then
+            echo "Installer not found at $OUT"
+            exit 1
+          fi
+          SIZE=$(stat -c%s "$OUT" 2>/dev/null || stat -f%z "$OUT")
+          echo "Installer size: $SIZE bytes"
+          if [ "$SIZE" -lt 100000 ]; then
+            echo "Installer suspiciously small — likely missing payload"
+            exit 1
+          fi
+          echo "installer_path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.PLUGIN_NAME }}-Windows
+          path: ${{ steps.verify_installer.outputs.installer_path }}
+          if-no-files-found: error

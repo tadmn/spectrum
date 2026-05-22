@@ -1,0 +1,70 @@
+name: Spectrum
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch: # Allows running a build from the UI
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+  pull_request:
+
+# When pushing new commits, cancel any running builds on that branch
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    # Don't double run on PRs
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
+    uses: ./.github/workflows/build.yml
+
+  test:
+    name: Test
+    needs: build
+    uses: ./.github/workflows/test.yml
+
+  package_macos:
+    name: Package macOS
+    needs: [build, test]
+    uses: ./.github/workflows/package-macos.yml
+
+  package_windows:
+    name: Package Windows
+    needs: [build, test]
+    uses: ./.github/workflows/package-windows.yml
+
+  package_linux:
+    name: Package Linux
+    needs: [build, test]
+    uses: ./.github/workflows/package-linux.yml
+
+  release:
+    name: Draft Release
+    needs: [package_macos, package_windows, package_linux]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all packaged installers
+        uses: actions/download-artifact@v8
+        with:
+          pattern: Spectrum-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: List staged assets
+        run: ls -la release-assets
+
+      - name: Create draft release
+        uses: softprops/action-gh-release@v3
+        with:
+          draft: true
+          name: ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: release-assets/*
+          generate_release_notes: true

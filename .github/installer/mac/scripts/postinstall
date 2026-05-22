@@ -1,0 +1,21 @@
+#!/bin/bash
+# Run automatically by macOS installer after the payload is placed.
+# Strips quarantine so users don't hit Gatekeeper per-file, and
+# re-applies ad-hoc signing in case pkgbuild disturbed the bundle's
+# extended attributes / resource fork during packaging.
+set -e
+
+TARGETS=(
+  "/Library/Audio/Plug-Ins/VST3/Spectrum.vst3"
+  "/Library/Audio/Plug-Ins/Components/Spectrum.component"
+  "/Library/Audio/Plug-Ins/CLAP/Spectrum.clap"
+)
+
+for t in "${TARGETS[@]}"; do
+  if [ -e "$t" ]; then
+    xattr -dr com.apple.quarantine "$t" || true
+    codesign --force --deep --sign - "$t" || true
+  fi
+done
+
+exit 0
