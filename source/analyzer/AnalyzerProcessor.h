@@ -119,10 +119,10 @@ class AnalyzerProcessor {
     void setMaxDb(float max_dB);
     float maxDb() const noexcept { return max_dB_.load(std::memory_order_relaxed); }
 
-    void setAttackRate(float attackRate) { attack_.store(attackRate, std::memory_order_relaxed); }
+    void setAttackRate(float attack_rate) { attack_.store(attack_rate, std::memory_order_relaxed); }
     float attackRate() const noexcept { return attack_.load(std::memory_order_relaxed); }
 
-    void setReleaseRate(float releaseRate) { release_.store(releaseRate, std::memory_order_relaxed); }
+    void setReleaseRate(float release_rate) { release_.store(release_rate, std::memory_order_relaxed); }
     float releaseRate() const noexcept { return release_.load(std::memory_order_relaxed); }
     // ---------------------------------------------------------------------------------------------
 
@@ -145,14 +145,14 @@ class AnalyzerProcessor {
      * instead of choc::buffer::ChannelArrayView. It's useful when integrating with APIs
      * or frameworks that provide audio data in this format.
      *
-     * @param audioBuffers Array of pointers to audio channel data. Each pointer points to
+     * @param audio_buffers Array of pointers to audio channel data. Each pointer points to
      *                    an array of float samples for a single channel.
-     * @param numChannels Number of audio channels in the input (size of audioBuffers array).
-     * @param numFrames Number of audio frames (samples per channel) in each buffer.
+     * @param channels Number of audio channels in the input (size of audioBuffers array).
+     * @param frames Number of audio frames (samples per channel) in each buffer.
      *
      * @note Currently, only a channel count of 1 is supported.
      */
-    void processAudio(float** audioBuffers, int numChannels, int numFrames);
+    void processAudio(float** audio_buffers, int channels, int frames);
 
     /**
      * @brief Updates spectrum analysis with time-based parameters.
@@ -160,9 +160,9 @@ class AnalyzerProcessor {
      * Call this on your graphics drawing callback. The analyzer will pull the latest FFT
      * data from the audio thread and process the band magnitudes, ballistics, smoothing, etc.
      *
-     * @param deltaTimeSeconds Time since the last processAnalyzer call in seconds.
+     * @param delta_time_seconds Time since the last processAnalyzer call in seconds.
      */
-    void processAnalyzer(double deltaTimeSeconds);
+    void processAnalyzer(double delta_time_seconds);
 
     /**
      * @brief Resets the analyzer state. Band dB values will get reset to the minimum dB value.

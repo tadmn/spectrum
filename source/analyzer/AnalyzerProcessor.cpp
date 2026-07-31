@@ -66,32 +66,32 @@ void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio
     fifo_buffer_->pop(static_cast<int>(audio.getNumFrames()) - fifo_buffer_->freeSpace());
     fifo_buffer_->push(audio);
     if (fifo_buffer_->isFull()) {
-        RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fftBuffer(*transfer_buffer_);
-        choc::buffer::copy(choc::buffer::createMonoView(fftBuffer->data(), fftBuffer->size()),
+        RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fft_buffer(*transfer_buffer_);
+        choc::buffer::copy(choc::buffer::createMonoView(fft_buffer->data(), fft_buffer->size()),
                            fifo_buffer_->getBuffer().getChannel(0));
     }
 }
 
-void AnalyzerProcessor::processAudio(float** audioBuffers, int numChannels, int numFrames) {
-    tb_assert(numChannels == k_num_channels);
-    processAudio(choc::buffer::createChannelArrayView(audioBuffers, numChannels, numFrames));
+void AnalyzerProcessor::processAudio(float** audio_buffers, int channels, int frames) {
+    tb_assert(channels == k_num_channels);
+    processAudio(choc::buffer::createChannelArrayView(audio_buffers, channels, frames));
 }
 
-void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
-    const tb::FlushDenormalsToZero flushDenormals;
+void AnalyzerProcessor::processAnalyzer(double delta_time_seconds) {
+    const tb::FlushDenormalsToZero flush_denormals;
 
-    const auto attack = std::clamp(attack_.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
-    const auto release = std::clamp(release_.load(std::memory_order_relaxed) * deltaTimeSeconds, 0.0, 1.0);
+    const auto attack = std::clamp(attack_.load(std::memory_order_relaxed) * delta_time_seconds, 0.0, 1.0);
+    const auto release = std::clamp(release_.load(std::memory_order_relaxed) * delta_time_seconds, 0.0, 1.0);
 
     const auto min_dB = static_cast<double>(min_dB_.load(std::memory_order_relaxed));
-    const auto maxDb = static_cast<double>(max_dB_.load(std::memory_order_relaxed));
+    const auto max_dB = static_cast<double>(max_dB_.load(std::memory_order_relaxed));
 
-    // Grab the output of the FFT from the audio thread
+    // Grab the latest block of audio from the audio thread
     {
-        // RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> f(*mFftComplexOutput);
-        RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> fftBuffer(*transfer_buffer_);
-        auto fft_buffer = choc::buffer::createMonoView(fftBuffer->data(), fftBuffer->size());
-        choc::buffer::copyRemappingChannels(fft_in_buffer_, fft_buffer);
+        RealtimeObject::ScopedAccess<farbot::ThreadType::nonRealtime> fft_buffer(*transfer_buffer_);
+        choc::buffer::copyRemappingChannels(fft_in_buffer_,
+                                            choc::buffer::createMonoView(fft_buffer->data(),
+                                                                         fft_buffer->size()));
     }
 
     // Apply windowing
@@ -134,7 +134,7 @@ void AnalyzerProcessor::processAnalyzer(double deltaTimeSeconds) {
         if (! smoothed_line_.empty())
             bands_line_index += 2; // Because we added extra control points onto the smoothed line
 
-        bands_line_[bands_line_index].y = static_cast<float>((dB - min_dB) / (maxDb - min_dB));
+        bands_line_[bands_line_index].y = static_cast<float>((dB - min_dB) / (max_dB - min_dB));
     }
 
     if (! smoothed_line_.empty()) {
