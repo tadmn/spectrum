@@ -63,7 +63,10 @@ void AnalyzerProcessor::processAudio(choc::buffer::ChannelArrayView<float> audio
         return; // Try to avoid blocking the audio thread as much as possible
 
     audio = audio.getEnd(std::min(audio.getNumFrames(), static_cast<uint32_t>(fifo_buffer_->capacity())));
-    fifo_buffer_->pop(static_cast<int>(audio.getNumFrames()) - fifo_buffer_->freeSpace());
+
+    if (int excess = static_cast<int>(audio.getNumFrames()) - fifo_buffer_->freeSpace(); excess > 0)
+        fifo_buffer_->pop(excess);
+
     fifo_buffer_->push(audio);
     if (fifo_buffer_->isFull()) {
         RealtimeObject::ScopedAccess<farbot::ThreadType::realtime> fft_buffer(*transfer_buffer_);
