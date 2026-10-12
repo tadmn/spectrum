@@ -41,7 +41,7 @@ CPMAddPackage("gh:free-audio/clap-helpers#629ae7526740e3d0ee4d64c230df183ecdb2ff
 
 set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
 set(CLAP_WRAPPER_OUTPUT_NAME "${plugin_name}")
-CPMAddPackage("gh:free-audio/clap-wrapper@0.15.1")
+CPMAddPackage("gh:free-audio/clap-wrapper@0.16.0")
 
 CPMAddPackage("gh:tadmn/visage#a118633d96deffe8c108d34f843715590d283a23")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.8")
