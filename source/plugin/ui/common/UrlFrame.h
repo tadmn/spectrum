@@ -3,6 +3,13 @@
 
 #include "Common.h"
 
+#if defined(_WIN32)
+#include <windows.h>
+#include <shellapi.h>
+#else
+#include <unistd.h>
+#endif
+
 class UrlFrame : public Button {
 public:
     UrlFrame() {
@@ -25,20 +32,24 @@ public:
 
   private:
     void openUrlInBrowser() const {
-        std::string command =
+        std::string url = "https://";
+        url += url_text_.text().toUtf8();
+
 #if defined(__APPLE__)
-        "open";
-#elif defined(_WIN32)
-        "start";
+        if (fork() == 0) {
+            // Child process
+            execl("/usr/bin/open", "open", url.c_str(), nullptr);
+            _exit(1);
+        }
 #elif defined(__linux__)
-        "xdg-open";
+        if (fork() == 0) {
+            // Child process
+            execlp("xdg-open", "xdg-open", url.c_str(), nullptr);
+            _exit(1);
+        }
+#elif defined(_WIN32)
+        ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 #endif
-
-        command += " https://";
-        command += url_text_.text().toUtf8();
-
-        if (const auto result = std::system(command.c_str()); result != 0)
-            std::cerr << "Spectrum: Failed to open URL in browser: " << result << std::endl;
     }
 
     Text url_text_;
