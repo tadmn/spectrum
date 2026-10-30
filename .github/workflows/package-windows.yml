@@ -13,7 +13,7 @@ defaults:
 jobs:
   package_windows:
     name: Windows Installer
-    runs-on: windows-2025
+    runs-on: windows-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
