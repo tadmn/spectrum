@@ -1,10 +1,7 @@
 # Spectrum
 Free GPU accelerated cross-platform audio spectrum analyzer.
 
-<video
-muted
-src=https://github.com/user-attachments/assets/8fab4f9f-5aed-48a2-9bb7-50d1d867c713
-/>
+https://github.com/user-attachments/assets/8fab4f9f-5aed-48a2-9bb7-50d1d867c713.mp4
 
 ## Features
 - Real-time FFT-based spectrum analysis with thread safety built in

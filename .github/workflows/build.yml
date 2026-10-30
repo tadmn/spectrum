@@ -23,13 +23,13 @@ jobs:
       matrix:
         include:
           - name: macOS
-            os: macos-15
+            os: macos-latest
             artifact_id: macos
           - name: Windows
-            os: windows-2025
+            os: windows-latest
             artifact_id: windows
           - name: Linux
-            os: ubuntu-24.04
+            os: ubuntu-latest
             artifact_id: linux
 
     steps:
