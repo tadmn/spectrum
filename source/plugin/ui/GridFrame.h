@@ -8,7 +8,6 @@
 class GridFrame : public Frame {
   public:
     GridFrame() {
-        setMasked(true);
         setIgnoresMouseEvents(true, true);
     }
 
@@ -27,21 +26,20 @@ class GridFrame : public Frame {
     }
 
     void draw(Canvas& canvas) override {
-        canvas.setColor(spectrum::backgroundColor());
-        canvas.fill();
-
         drawFreqGrid(canvas);
         drawDbGrid(canvas);
 
-        canvas.setBlendMode(BlendMode::Mult);
-        const Color c0(0x00ffffff);
-        const Color c1(0xffffffff);
-        canvas.setBrush(Brush::vertical(Gradient(c0, c1, c1, c1, c1, c0)));
+        const Color bg = spectrum::backgroundColor();
+        const Color fadeOpaque = bg.withAlpha(1.0f);
+        const Color fadeTransparent = bg.withAlpha(0.0f);
+        canvas.setBrush(Brush::vertical(Gradient(fadeOpaque, fadeTransparent, fadeTransparent,
+                                                 fadeTransparent, fadeOpaque)));
 
         // The `+ 1` here is to cover a visual bug on Windows & Linux
         canvas.fill(0, 0, width(), height() + 1);
 
-        canvas.setBrush(Brush::horizontal(Gradient(c0, c1, c1, c1, c1, c0)));
+        canvas.setBrush(Brush::horizontal(Gradient(fadeOpaque, fadeTransparent, fadeTransparent,
+                                                   fadeTransparent, fadeOpaque)));
         canvas.fill(0, 0, width(), height());
     }
 
