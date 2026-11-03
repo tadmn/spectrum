@@ -88,7 +88,7 @@ jobs:
 
       - name: Cache build (skipped for version tags and manual runs)
         if: steps.sccache.outputs.use == 'true'
-        uses: mozilla-actions/sccache-action@v0.0.10
+        uses: mozilla-actions/sccache-action@v0.0.11
 
       - name: Configure
         run: >-
