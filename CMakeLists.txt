@@ -17,6 +17,11 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif ()
 
+# Must come before tad-bits, which adds its own older Catch2 when BUILD_TESTS is on and CPM keeps the first one added
+if (BUILD_TESTS)
+    CPMAddPackage("gh:catchorg/Catch2@3.16.1")
+endif ()
+
 CPMAddPackage("gh:tadmn/tad-bits#1fc9790bdeed532f50b4e9c31704821d26628969")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
@@ -37,7 +42,7 @@ add_compiler_warnings(spectrum-analyzer-processor)
 set(plugin_name "Spectrum")
 
 CPMAddPackage("gh:free-audio/clap#1.2.10")
-CPMAddPackage("gh:free-audio/clap-helpers#629ae7526740e3d0ee4d64c230df183ecdb2ff5a")
+CPMAddPackage("gh:free-audio/clap-helpers#a380c978f429103e08afc1d17e9efbf3e3c96ee2")
 
 set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
 set(CLAP_WRAPPER_OUTPUT_NAME "${plugin_name}")
@@ -45,7 +50,7 @@ CPMAddPackage("gh:free-audio/clap-wrapper@0.17.0")
 
 CPMAddPackage("gh:VitalAudio/visage#238d1b542002e03ad42accd076f938304e67971d")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.8")
-CPMAddPackage("gh:nlohmann/json@3.11.3")
+CPMAddPackage("gh:nlohmann/json@3.12.0")
 
 file(GLOB_RECURSE font_files fonts/*.ttf)
 add_embedded_resources(embedded-font-resources "Fonts.h" "resources::fonts" "${font_files}")
@@ -67,6 +72,10 @@ target_link_libraries(spectrum-impl PRIVATE
 target_compile_definitions(spectrum-impl PRIVATE
         PLUGIN_NAME="${plugin_name}"
         PRODUCT_VERSION="${PROJECT_VERSION}"
+
+        # nlohmann/json's std::filesystem::path conversions need char8_t in C++20, but we build with -fno-char8_t
+        JSON_HAS_FILESYSTEM=0
+        JSON_HAS_EXPERIMENTAL_FILESYSTEM=0
 )
 
 add_compiler_warnings(spectrum-impl)
@@ -136,7 +145,6 @@ if (TARGET base-sdk-vst3)
 endif ()
 
 if (BUILD_TESTS)
-    CPMAddPackage("gh:catchorg/Catch2@3.8.1")
     set(test_runner testrunner)
     add_executable(${test_runner} tests/AnalyzerProcessorTests.cpp)
     target_link_libraries(${test_runner} PRIVATE spectrum-analyzer-processor Catch2::Catch2WithMain)
