@@ -7,7 +7,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment ve
 set(CMAKE_OSX_ARCHITECTURES "arm64") # Only support Apple silicon
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-project(spectrum VERSION 2.0.0 LANGUAGES C CXX)
+project(spectrum VERSION 2.0.1 LANGUAGES C CXX)
 
 option(USE_SANITIZER "Build and link with the address sanitizer" OFF)
 option(BUILD_TESTS "Build unit test executable" OFF)
@@ -41,7 +41,7 @@ CPMAddPackage("gh:free-audio/clap-helpers#629ae7526740e3d0ee4d64c230df183ecdb2ff
 
 set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
 set(CLAP_WRAPPER_OUTPUT_NAME "${plugin_name}")
-CPMAddPackage("gh:free-audio/clap-wrapper@0.16.0")
+CPMAddPackage("gh:free-audio/clap-wrapper@0.17.0")
 
 CPMAddPackage("gh:VitalAudio/visage#238d1b542002e03ad42accd076f938304e67971d")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.8")
