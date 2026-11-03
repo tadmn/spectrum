@@ -247,8 +247,8 @@ bool SpectrumPlugin::guiAdjustSize(uint32_t* width, uint32_t* height) noexcept {
 
     // This handles the maximums. Maximums really only exist to prevent bugs / crashes when
     // CLI tests like pluginval set enormous sizes
-    *width = std::min(*width, static_cast<uint32_t>(k_max_width * gui_window_->dpiScale()));
-    *height = std::min(*height, static_cast<uint32_t>(k_max_height * gui_window_->dpiScale()));
+    *width = (std::min)(*width, static_cast<uint32_t>(k_max_width * gui_window_->dpiScale()));
+    *height = (std::min)(*height, static_cast<uint32_t>(k_max_height * gui_window_->dpiScale()));
 
     return true;
 }
