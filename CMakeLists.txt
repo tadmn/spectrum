@@ -43,7 +43,7 @@ set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
 set(CLAP_WRAPPER_OUTPUT_NAME "${plugin_name}")
 CPMAddPackage("gh:free-audio/clap-wrapper@0.16.0")
 
-CPMAddPackage("gh:tadmn/visage#913219368f9d70450765d51bc836cd65e6cedad4")
+CPMAddPackage("gh:VitalAudio/visage#238d1b542002e03ad42accd076f938304e67971d")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.8")
 CPMAddPackage("gh:nlohmann/json@3.11.3")
 
