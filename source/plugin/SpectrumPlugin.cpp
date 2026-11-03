@@ -6,9 +6,41 @@
 #include <tb_Core.h>
 #include <clap/helpers/plugin.hxx>
 
+#include <cstring>
+#include <optional>
+
+namespace {
+
+// Returns the channel count a set of port requests resolves to, or nullopt if it isn't supported.
+// Input and output always have matching mono or stereo layouts since audio is passed straight through.
+std::optional<uint32_t> resolveChannelCount(const clap_audio_port_configuration_request* requests,
+                                            uint32_t request_count, uint32_t current_channel_count) {
+    auto input_channels = current_channel_count;
+    auto output_channels = current_channel_count;
+
+    for (uint32_t i = 0; i < request_count; ++i) {
+        const auto& request = requests[i];
+        if (request.port_index != 0 || (request.channel_count != 1 && request.channel_count != 2))
+            return std::nullopt;
+
+        const auto* expected_type = request.channel_count == 1 ? CLAP_PORT_MONO : CLAP_PORT_STEREO;
+        if (request.port_type != nullptr && std::strcmp(request.port_type, expected_type) != 0)
+            return std::nullopt;
+
+        (request.is_input ? input_channels : output_channels) = request.channel_count;
+    }
+
+    if (input_channels != output_channels)
+        return std::nullopt;
+
+    return input_channels;
+}
+
+} // namespace
+
 const clap_plugin_descriptor* SpectrumPlugin::getDescriptor() {
-    static const char* features[] = { CLAP_PLUGIN_FEATURE_STEREO, CLAP_PLUGIN_FEATURE_ANALYZER,
-                                      "Free and Open Source", nullptr };
+    static const char* features[] = { CLAP_PLUGIN_FEATURE_MONO, CLAP_PLUGIN_FEATURE_STEREO,
+                                      CLAP_PLUGIN_FEATURE_ANALYZER, "Free and Open Source", nullptr };
 
     static clap_plugin_descriptor desc = { CLAP_VERSION,
                                            "com.tadmn.spectrum",
@@ -49,12 +81,14 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    if (in.getNumChannels() != 2) {
+    if (in.getNumChannels() != 1 && in.getNumChannels() != 2) {
         tb_assert(false); // Unsupported channel count
         return CLAP_PROCESS_ERROR;
     }
 
-    {
+    if (in.getNumChannels() == 1) {
+        analyzer_processor_.processAudio(in);
+    } else {
         // Average the two input channels into a single buffer to be processed
         tb_assert(stereo_mix_buffer_.getNumFrames() >= in.getNumFrames());
         auto mix = stereo_mix_buffer_.getStart(in.getNumFrames());
@@ -83,10 +117,25 @@ bool SpectrumPlugin::audioPortsInfo(uint32_t index, bool /*isInput*/,
     strncpy(info->name, "Main Input", sizeof(info->name));
     info->id = 0;
     info->flags = CLAP_AUDIO_PORT_IS_MAIN;
-    info->channel_count = 2;
+    info->channel_count = channel_count_;
     info->in_place_pair = 0;
-    info->port_type = CLAP_PORT_STEREO;
+    info->port_type = channel_count_ == 1 ? CLAP_PORT_MONO : CLAP_PORT_STEREO;
 
+    return true;
+}
+
+bool SpectrumPlugin::configurableAudioPortsCanApplyConfiguration(
+    const clap_audio_port_configuration_request* requests, uint32_t request_count) const noexcept {
+    return resolveChannelCount(requests, request_count, channel_count_).has_value();
+}
+
+bool SpectrumPlugin::configurableAudioPortsApplyConfiguration(
+    const clap_audio_port_configuration_request* requests, uint32_t request_count) noexcept {
+    const auto channel_count = resolveChannelCount(requests, request_count, channel_count_);
+    if (! channel_count)
+        return false;
+
+    channel_count_ = *channel_count;
     return true;
 }
 
