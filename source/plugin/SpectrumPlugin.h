@@ -13,7 +13,8 @@
 #if NDEBUG
 using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Ignore, clap::helpers::CheckingLevel::Minimal>;
 #else
-using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Terminate, clap::helpers::CheckingLevel::Maximal>;
+// Log host misbehaviour without terminating, as clap-wrapper's AUv2 calls gui.is_api_supported off the main thread in Logic Pro
+using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Ignore, clap::helpers::CheckingLevel::Maximal>;
 #endif
 
 namespace cb = choc::buffer;
@@ -43,6 +44,12 @@ class SpectrumPlugin : public ClapPlugin {
 
     bool audioPortsInfo(uint32_t index, bool isInput, clap_audio_port_info* info) const noexcept override;
 
+    bool implementsConfigurableAudioPorts() const noexcept override { return true; }
+    bool configurableAudioPortsCanApplyConfiguration(const clap_audio_port_configuration_request* requests,
+                                                     uint32_t request_count) const noexcept override;
+    bool configurableAudioPortsApplyConfiguration(const clap_audio_port_configuration_request* requests,
+                                                  uint32_t request_count) noexcept override;
+
     bool implementsState() const noexcept override { return true; }
     bool stateSave(const clap_ostream* stream) noexcept override;
     bool stateLoad(const clap_istream* stream) noexcept override;
@@ -67,6 +74,9 @@ class SpectrumPlugin : public ClapPlugin {
     int pluginHeight() const;
 
     State state_;
+
+    // Only changed while the plugin is inactive, so it's safe to read from the audio thread
+    uint32_t channel_count_ = 2;
 
     choc::buffer::ChannelArrayBuffer<float> stereo_mix_buffer_;
     AnalyzerProcessor analyzer_processor_;
