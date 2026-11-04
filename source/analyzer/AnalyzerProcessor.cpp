@@ -154,6 +154,14 @@ void AnalyzerProcessor::reset() {
         band.dB = min_dB;
 }
 
+void AnalyzerProcessor::copyBandLevelsFrom(const AnalyzerProcessor& other) {
+    if (bands_.size() != other.bands_.size())
+        return;
+
+    for (size_t i = 0; i < bands_.size(); ++i)
+        bands_[i].dB = other.bands_[i].dB;
+}
+
 void AnalyzerProcessor::updateBands() {
     const tb::FlushDenormalsToZero flushDenormals;
 

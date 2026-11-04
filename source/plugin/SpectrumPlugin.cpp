@@ -56,7 +56,7 @@ const clap_plugin_descriptor* SpectrumPlugin::getDescriptor() {
 }
 
 SpectrumPlugin::SpectrumPlugin(const clap_host* host) : ClapPlugin(getDescriptor(), host)
-    , state_(analyzer_processor_, [this]{ _host.stateMarkDirty(); }) {}
+    , state_(analyzer_processors_, channel_count_, [this]{ _host.stateMarkDirty(); }) {}
 
 SpectrumPlugin::~SpectrumPlugin() = default;
 
@@ -68,7 +68,7 @@ void SpectrumPlugin::onPosixFd(int fd, clap_posix_fd_flags_t flags) noexcept {
 #endif
 
 bool SpectrumPlugin::activate(double sampleRate, uint32_t /*minFrames*/, uint32_t maxFrames) noexcept {
-    stereo_mix_buffer_.resize({.numChannels = 1, .numFrames = maxFrames});
+    mix_buffer_.resize({.numChannels = 1, .numFrames = maxFrames});
     state_.setSampleRate(sampleRate);
     return true;
 }
@@ -81,22 +81,29 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    if (in.getNumChannels() != 1 && in.getNumChannels() != 2) {
+    const auto num_channels = in.getNumChannels();
+    if (num_channels == 0 || num_channels > analyzer_processors_.size()) {
         tb_assert(false); // Unsupported channel count
         return CLAP_PROCESS_ERROR;
     }
 
-    if (in.getNumChannels() == 1) {
-        analyzer_processor_.processAudio(in);
-    } else {
-        // Average the two input channels into a single buffer to be processed
-        tb_assert(stereo_mix_buffer_.getNumFrames() >= in.getNumFrames());
-        auto mix = stereo_mix_buffer_.getStart(in.getNumFrames());
+    if (num_channels > 1 && state_.channel_mode() == ChannelMode::Summed) {
+        // Average the input channels into a single buffer to be processed
+        tb_assert(mix_buffer_.getNumFrames() >= in.getNumFrames());
+        auto mix = mix_buffer_.getStart(in.getNumFrames());
         copy(mix, in.getChannel(0));
-        add(mix, in.getChannel(1));
-        applyGain(mix, 0.5f);
-        analyzer_processor_.processAudio(mix);
+        for (uint32_t channel = 1; channel < num_channels; ++channel)
+            add(mix, in.getChannel(channel));
+
+        applyGain(mix, 1.0f / static_cast<float>(num_channels));
+        analyzer_processors_.front()->processAudio(mix);
+    } else {
+        analyzer_processors_.front()->processAudio(in.getChannelRange({ 0, 1 }));
     }
+
+    // Fed in every mode so that they have current audio as soon as separate channels are turned on
+    for (uint32_t channel = 1; channel < num_channels; ++channel)
+        analyzer_processors_[channel]->processAudio(in.getChannelRange({ channel, channel + 1 }));
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {
@@ -136,6 +143,7 @@ bool SpectrumPlugin::configurableAudioPortsApplyConfiguration(
         return false;
 
     channel_count_ = *channel_count;
+    state_.setChannelCount(channel_count_);
     return true;
 }
 
@@ -227,7 +235,7 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
             _host.guiRequestResize(pluginWidth(), pluginHeight());
     };
 
-    gui_window_->addChild(std::make_unique<TopFrame>(state_, analyzer_processor_));
+    gui_window_->addChild(std::make_unique<TopFrame>(state_, analyzer_processors_));
 
     // Default dimensions
     gui_window_->setWindowDimensions(k_default_height, k_default_width);
