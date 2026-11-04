@@ -169,6 +169,17 @@ class AnalyzerProcessor {
      */
     void reset();
 
+    /**
+     * @brief Copies the current band dB values of another analyzer into this one.
+     *
+     * Useful when this analyzer hasn't been running for a while, so that its line continues from
+     * the other analyzer's line rather than from stale values. Does nothing if the band layouts of
+     * the analyzers differ. Call this on the same thread as processAnalyzer.
+     *
+     * @param other The analyzer to copy the band dB values from.
+     */
+    void copyBandLevelsFrom(const AnalyzerProcessor& other);
+
   private:
     void updateBands();
 

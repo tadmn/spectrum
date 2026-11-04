@@ -12,8 +12,8 @@
 
 class MainFrame : public Frame {
   public:
-    MainFrame(State& state, AnalyzerProcessor& analyzerProcessor) :
-        state_(state), analyzer_(analyzerProcessor), parameter_panel_(state) {
+    MainFrame(State& state, AnalyzerProcessors& analyzer_processors) :
+        state_(state), analyzer_(state, analyzer_processors), parameter_panel_(state) {
         addChild(grid_);
         addChild(analyzer_);
         addChild(freq_labels_);
@@ -75,7 +75,8 @@ class MainFrame : public Frame {
 
 class TopFrame : public Frame {
   public:
-    TopFrame(State& state, AnalyzerProcessor& p) : state_(state), main_frame_(state, p) {
+    TopFrame(State& state, AnalyzerProcessors& analyzer_processors) :
+        state_(state), main_frame_(state, analyzer_processors) {
         setPalette(&palette_);
 
         addChild(main_frame_);
