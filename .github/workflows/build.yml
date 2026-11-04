@@ -47,7 +47,7 @@ jobs:
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt install libgl1-mesa-dev libxrandr-dev intel-oneapi-ipp-devel xvfb
+        run: sudo apt-get update && sudo apt install libgl1-mesa-dev libxrandr-dev libfontconfig1-dev libx11-xcb-dev libxcb-present-dev intel-oneapi-ipp-devel xvfb
 
       - name: Cache IPP (Windows)
         if: runner.os == 'Windows'
