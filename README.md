@@ -48,7 +48,7 @@ You will need to follow the instructions in the README at https://github.com/tad
 You will also need to install the following dependencies:
 ```
 sudo apt-get update
-sudo apt install libgl1-mesa-dev libxrandr-dev
+sudo apt install libgl1-mesa-dev libxrandr-dev libfontconfig1-dev libx11-xcb-dev libxcb-present-dev
 ```
 
 ## Using in Your Own Project
