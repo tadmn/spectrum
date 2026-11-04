@@ -249,3 +249,33 @@ TEST_CASE("AnalyzerProcessor line smoothing", "[analyzer]") {
         REQUIRE(line.size() > bands.size() * 4);
     }
 }
+
+TEST_CASE("AnalyzerProcessor copying band levels", "[analyzer]") {
+    AnalyzerProcessor source;
+    AnalyzerProcessor destination;
+
+    auto signal = makeSineWave(1'000.0, 44'100.0, 4'096);
+    source.processAudio(signal);
+    source.processAnalyzer(1.0);
+
+    SECTION("Matching band layouts") {
+        destination.copyBandLevelsFrom(source);
+
+        const auto& source_bands = source.bands();
+        const auto& destination_bands = destination.bands();
+        REQUIRE(source_bands.size() == destination_bands.size());
+        for (size_t i = 0; i < source_bands.size(); ++i)
+            REQUIRE(destination_bands[i].dB == source_bands[i].dB);
+    }
+
+    SECTION("Differing band layouts") {
+        auto params = destination.nonRealtimeParameters();
+        params.target_num_bands = 64;
+        destination.setNonRealtimeParameters(params);
+        REQUIRE(destination.bands().size() != source.bands().size());
+
+        const auto level_before = destination.bands().front().dB;
+        destination.copyBandLevelsFrom(source);
+        REQUIRE(destination.bands().front().dB == level_before);
+    }
+}

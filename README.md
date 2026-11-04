@@ -11,6 +11,7 @@ https://github.com/user-attachments/assets/8fab4f9f-5aed-48a2-9bb7-50d1d867c713.
 - Customizable frequency weighting
 - Parameters can be changed on-the-fly, making it easy to dial in the right settings for your project
 - Level ballistics controls
+- Stereo instances can show the left and right channels separately or summed together
 - Normalized output that allows easy integration into any 2D graphics library
 
 ## Download

@@ -5,6 +5,7 @@
 #include "common/Shelf.h"
 #include "embedded/Fonts.h"
 
+#include "ChannelsFrame.h"
 #include "RangeFrame.h"
 #include "ResolutionFrame.h"
 #include "SmoothingFrame.h"
@@ -46,17 +47,21 @@ class ParameterPanel : public Frame {
   public:
     ParameterPanel(State& state) : state_(state),
         resolution_button_("Resolution"), range_button_("Range"), tilt_button_("Tilt"), smoothing_button_("Smoothing"),
-        resolution_frame_(state), range_frame_(state), tilt_frame_(state), smoothing_frame_(state) {
+        channels_button_("Channels"),
+        resolution_frame_(state), range_frame_(state), tilt_frame_(state), smoothing_frame_(state),
+        channels_frame_(state) {
         addChild(shelf_);
         addChild(resolution_button_);
         addChild(range_button_);
         addChild(tilt_button_);
         addChild(smoothing_button_);
+        addChild(channels_button_);
 
         addChild(resolution_frame_, false);
         addChild(range_frame_, false);
         addChild(tilt_frame_, false);
         addChild(smoothing_frame_, false);
+        addChild(channels_frame_, false);
 
         {
             auto handler = [this](const MouseEvent& e) { handleMouse(e, false); };
@@ -68,6 +73,8 @@ class ParameterPanel : public Frame {
             tilt_frame_.onMouseEnter() += handler;
             smoothing_button_.onMouseEnter() += handler;
             smoothing_frame_.onMouseEnter() += handler;
+            channels_button_.onMouseEnter() += handler;
+            channels_frame_.onMouseEnter() += handler;
             onMouseEnter() += handler;
             onMouseMove() += handler;
         }
@@ -78,6 +85,7 @@ class ParameterPanel : public Frame {
             range_button_.onMouseExit() += handler;
             tilt_button_.onMouseExit() += handler;
             smoothing_button_.onMouseExit() += handler;
+            channels_button_.onMouseExit() += handler;
             onMouseExit() += handler;
         }
 
@@ -105,14 +113,18 @@ class ParameterPanel : public Frame {
             {
                 auto b2 = shelf_.bounds();
                 b2.trimTop(2);
-                const auto trim = 55;
+
+                const auto trim = 40;
                 b2.trimLeft(trim);
                 b2.trimRight(trim);
-                const auto spacing = 20;
-                const auto w = (b2.width() - spacing * 3) / 4;
+                const auto spacing = 12;
+                const auto num_buttons = 5;
+                const auto w = (b2.width() - spacing * (num_buttons - 1)) / num_buttons;
                 resolution_button_.setBounds(b2.trimLeft(w));
                 b2.trimLeft(spacing);
                 range_button_.setBounds(b2.trimLeft(w));
+                b2.trimLeft(spacing);
+                channels_button_.setBounds(b2.trimLeft(w));
                 b2.trimLeft(spacing);
                 tilt_button_.setBounds(b2.trimLeft(w));
                 b2.trimLeft(spacing);
@@ -131,6 +143,7 @@ class ParameterPanel : public Frame {
             center_frame_above_button(range_frame_, range_button_, 92, 88);
             center_frame_above_button(tilt_frame_, tilt_button_, 116, 64);
             center_frame_above_button(smoothing_frame_, smoothing_button_, 116, 96);
+            center_frame_above_button(channels_frame_, channels_button_, 90, 56);
         }
     }
 
@@ -143,11 +156,13 @@ class ParameterPanel : public Frame {
             range_frame_.makeVisible(&range_frame_ == frame_to_show);
             tilt_frame_.makeVisible(&tilt_frame_ == frame_to_show);
             smoothing_frame_.makeVisible(&smoothing_frame_ == frame_to_show);
+            channels_frame_.makeVisible(&channels_frame_ == frame_to_show);
 
             resolution_button_.setHighlighted(&resolution_button_ == button_to_highlight);
             range_button_.setHighlighted(&range_button_ == button_to_highlight);
             tilt_button_.setHighlighted(&tilt_button_ == button_to_highlight);
             smoothing_button_.setHighlighted(&smoothing_button_ == button_to_highlight);
+            channels_button_.setHighlighted(&channels_button_ == button_to_highlight);
         };
 
         auto start_hide_timer = [this, show_only] {
@@ -172,6 +187,8 @@ class ParameterPanel : public Frame {
                 show_only(&tilt_frame_, &tilt_button_);
             } else if (e.event_frame == &smoothing_button_ || e.event_frame == &smoothing_frame_) {
                 show_only(&smoothing_frame_, &smoothing_button_);
+            } else if (e.event_frame == &channels_button_ || e.event_frame == &channels_frame_) {
+                show_only(&channels_frame_, &channels_button_);
             } else {
                 start_hide_timer();
             }
@@ -202,11 +219,12 @@ class ParameterPanel : public Frame {
     State& state_;
 
     Shelf shelf_;
-    PanelButton resolution_button_, range_button_, tilt_button_, smoothing_button_;
+    PanelButton resolution_button_, range_button_, tilt_button_, smoothing_button_, channels_button_;
     ResolutionFrame resolution_frame_;
     RangeFrame range_frame_;
     TiltFrame tilt_frame_;
     SmoothingFrame smoothing_frame_;
+    ChannelsFrame channels_frame_;
     EventTimer timer_;
 
     std::unique_ptr<State::Listener> state_listener_;
