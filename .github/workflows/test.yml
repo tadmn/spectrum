@@ -5,7 +5,11 @@ on:
 
 env:
   BUILD_DIR: Builds
-  CLAP_VALIDATOR_VERSION: 0.3.2
+  PLUGINVAL_VERSION: v2.0.0-beta3
+  CLAP_VALIDATOR_VERSION: 0.4.1
+  # Release assets are named with the full `git describe` of the release's
+  # commit rather than just the version, so this has to be bumped with it.
+  CLAP_VALIDATOR_BUILD: 0.4.1-127-g152b982
 
 defaults:
   run:
@@ -74,7 +78,7 @@ jobs:
 
       - name: Download pluginval
         run: |
-          BASE_URL="https://github.com/Tracktion/pluginval/releases/download/v1.0.4"
+          BASE_URL="https://github.com/Tracktion/pluginval/releases/download/${{ env.PLUGINVAL_VERSION }}"
           if [ "$RUNNER_OS" == "macOS" ]; then
             OS_SUFFIX="macOS"
           elif [ "$RUNNER_OS" == "Windows" ]; then
@@ -82,7 +86,7 @@ jobs:
           else
             OS_SUFFIX="Linux"
           fi
-          curl -L -o pluginval.zip "${BASE_URL}/pluginval_${OS_SUFFIX}.zip"
+          curl -fL -o pluginval.zip "${BASE_URL}/pluginval_${OS_SUFFIX}.zip"
           unzip -o pluginval.zip -d pluginval-bin
 
       - name: Install AU components for macOS AU discovery
@@ -172,7 +176,7 @@ jobs:
 
           for plugin in "${PLUGINS[@]}"; do
             echo "::group::Validating $plugin"
-            if "${RUN_PREFIX[@]}" "$PLUGINVAL" --strictness-level 10 --validate-in-process "${EXTRA_ARGS[@]}" "$plugin"; then
+            if "${RUN_PREFIX[@]}" "$PLUGINVAL" validate --strictness-level 10 "${EXTRA_ARGS[@]}" "$plugin"; then
               echo "PASSED: $plugin"
             else
               echo "FAILED: $plugin"
@@ -196,16 +200,22 @@ jobs:
           mkdir -p clap-validator-bin
           BASE_URL="https://github.com/free-audio/clap-validator/releases/download/${{ env.CLAP_VALIDATOR_VERSION }}"
           if [ "$RUNNER_OS" == "macOS" ]; then
-            curl -L -o clap-validator.tar.gz "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-macos-universal.tar.gz"
-            tar -xzf clap-validator.tar.gz -C clap-validator-bin
-            # macOS archive nests the binary under binaries/
-            mv clap-validator-bin/binaries/clap-validator clap-validator-bin/clap-validator
+            OS_SUFFIX="macos-universal"
           elif [ "$RUNNER_OS" == "Windows" ]; then
-            curl -L -o clap-validator.zip "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-windows.zip"
-            unzip -o clap-validator.zip -d clap-validator-bin
+            OS_SUFFIX="windows"
           else
-            curl -L -o clap-validator.tar.gz "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_VERSION }}-ubuntu-18.04.tar.gz"
-            tar -xzf clap-validator.tar.gz -C clap-validator-bin
+            OS_SUFFIX="ubuntu-22.04"
+          fi
+          curl -fL -o clap-validator.zip "${BASE_URL}/clap-validator-${{ env.CLAP_VALIDATOR_BUILD }}-${OS_SUFFIX}.zip"
+          unzip -o clap-validator.zip -d clap-validator-bin
+          # The macOS and Linux zips wrap a tarball (whose name doesn't match
+          # the release version, hence the glob), the Windows zip is just the exe
+          if [ "$RUNNER_OS" != "Windows" ]; then
+            tar -xzf clap-validator-bin/*.tar.gz -C clap-validator-bin
+          fi
+          # macOS archive nests the binary under binaries/
+          if [ "$RUNNER_OS" == "macOS" ]; then
+            mv clap-validator-bin/binaries/clap-validator clap-validator-bin/clap-validator
           fi
           chmod +x clap-validator-bin/clap-validator* || true
 
