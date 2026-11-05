@@ -10,6 +10,8 @@
 #include "AnalyzerProcessor.h"
 #include "State.h"
 
+class TopFrame;
+
 #if NDEBUG
 using ClapPlugin = clap::helpers::Plugin<clap::helpers::MisbehaviourHandler::Ignore, clap::helpers::CheckingLevel::Minimal>;
 #else
@@ -73,6 +75,10 @@ class SpectrumPlugin : public ClapPlugin {
     int pluginWidth() const;
     int pluginHeight() const;
 
+    void enterFullScreen();
+    void exitFullScreen();
+    void destroyFullScreenWindow();
+
     // Only changed while the plugin is inactive, so these are safe to read from the audio thread
     uint32_t channel_count_ = 2;
     AnalyzerProcessors analyzer_processors_;
@@ -82,7 +88,13 @@ class SpectrumPlugin : public ClapPlugin {
     choc::buffer::ChannelArrayBuffer<float> mix_buffer_;
 
     std::unique_ptr<ApplicationWindow> gui_window_;
+    TopFrame* top_frame_ = nullptr;
     bool notify_host_of_resize_ = true;
+
+    // Stays around while hidden after leaving full screen, as leaving happens from a click inside of
+    // this window. It gets destroyed the next time full screen is entered, or with the GUI.
+    std::unique_ptr<ApplicationWindow> full_screen_window_;
+    TopFrame* full_screen_frame_ = nullptr;
 
 public:
     // Prevent copying & moving
