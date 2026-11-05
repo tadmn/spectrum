@@ -62,8 +62,10 @@ SpectrumPlugin::~SpectrumPlugin() = default;
 
 #ifdef __linux__
 void SpectrumPlugin::onPosixFd(int fd, clap_posix_fd_flags_t flags) noexcept {
-    if (gui_window_ && gui_window_->window())
-        gui_window_->window()->processPluginFdEvents();
+    for (auto* window : { gui_window_.get(), full_screen_window_.get() }) {
+        if (window && window->window() && window->window()->posixFd() == fd)
+            window->window()->processPluginFdEvents();
+    }
 }
 #endif
 
@@ -235,7 +237,10 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
             _host.guiRequestResize(pluginWidth(), pluginHeight());
     };
 
-    gui_window_->addChild(std::make_unique<TopFrame>(state_, analyzer_processors_));
+    auto top_frame = std::make_unique<TopFrame>(state_, analyzer_processors_);
+    top_frame_ = top_frame.get();
+    top_frame_->onFullScreenClicked([this] { enterFullScreen(); });
+    gui_window_->addChild(std::move(top_frame));
 
     // Default dimensions
     gui_window_->setWindowDimensions(k_default_height, k_default_width);
@@ -244,6 +249,8 @@ bool SpectrumPlugin::guiCreate(char const* /*api*/, bool is_floating) noexcept {
 }
 
 void SpectrumPlugin::guiDestroy() noexcept {
+    destroyFullScreenWindow();
+
 #if __linux__
     if (gui_window_ && gui_window_->window() && _host.canUsePosixFdSupport())
         _host.posixFdSupportUnregister(gui_window_->window()->posixFd());
@@ -339,6 +346,66 @@ bool SpectrumPlugin::guiGetSize(uint32_t* width, uint32_t* height) noexcept {
     *width = pluginWidth();
     *height = pluginHeight();
     return true;
+}
+
+void SpectrumPlugin::enterFullScreen() {
+    destroyFullScreenWindow();
+
+    full_screen_window_ = std::make_unique<ApplicationWindow>();
+    full_screen_window_->setWindowDecoration(Window::Decoration::Popup);
+    full_screen_window_->onResize() += [this] {
+        for (auto* child : full_screen_window_->children())
+            child->setBounds(0, 0, full_screen_window_->width(), full_screen_window_->height());
+    };
+
+    auto frame = std::make_unique<TopFrame>(state_, analyzer_processors_);
+    full_screen_frame_ = frame.get();
+    full_screen_frame_->setFullScreen(true);
+    full_screen_frame_->onFullScreenClicked([this] { exitFullScreen(); });
+    full_screen_window_->addChild(std::move(frame));
+
+    top_frame_->setContentVisible(false);
+
+    full_screen_window_->setWindowDimensions(Dimension::widthPercent(100.0f), Dimension::heightPercent(100.0f));
+    full_screen_window_->show();
+
+#ifdef _WIN32
+    // Visage sizes windows to the monitor's work area, which leaves out the taskbar
+    POINT cursor {};
+    GetCursorPos(&cursor);
+    MONITORINFO monitor { sizeof(monitor) };
+    if (GetMonitorInfo(MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST), &monitor)) {
+        const auto& screen = monitor.rcMonitor;
+        SetWindowPos(static_cast<HWND>(full_screen_window_->window()->nativeHandle()), HWND_TOPMOST, screen.left,
+                     screen.top, screen.right - screen.left, screen.bottom - screen.top, SWP_SHOWWINDOW);
+    }
+#elif __linux__
+    if (_host.canUsePosixFdSupport() && full_screen_window_->window()) {
+        _host.posixFdSupportRegister(full_screen_window_->window()->posixFd(),
+                                     CLAP_POSIX_FD_READ | CLAP_POSIX_FD_WRITE | CLAP_POSIX_FD_ERROR);
+    }
+#endif
+}
+
+void SpectrumPlugin::exitFullScreen() {
+    full_screen_frame_->setContentVisible(false);
+    full_screen_window_->hide();
+    top_frame_->setContentVisible(true);
+}
+
+void SpectrumPlugin::destroyFullScreenWindow() {
+    if (! full_screen_window_)
+        return;
+
+#if __linux__
+    if (full_screen_window_->window() && _host.canUsePosixFdSupport())
+        _host.posixFdSupportUnregister(full_screen_window_->window()->posixFd());
+#endif
+
+    full_screen_window_.reset();
+    full_screen_frame_ = nullptr;
+
+    top_frame_->setContentVisible(true);
 }
 
 int SpectrumPlugin::pluginWidth() const {

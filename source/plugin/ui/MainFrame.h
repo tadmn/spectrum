@@ -6,6 +6,7 @@
 #include "common/Palette.h"
 #include "DbGridLabelsFrame.h"
 #include "FrequencyGridLabelsFrame.h"
+#include "FullScreenButton.h"
 #include "GridFrame.h"
 #include "OverlayFrame.h"
 #include "ParametersFrame.h"
@@ -81,6 +82,7 @@ class TopFrame : public Frame {
 
         addChild(main_frame_);
         addChild(logo_button_);
+        addChild(full_screen_button_);
         addChild(overlay_, false);
 
         logo_button_.onToggle() = [this](Button*, bool /*on*/) { overlay_.setVisible(true); };
@@ -89,6 +91,7 @@ class TopFrame : public Frame {
             constexpr float kBlurSize = 30.0f;
             main_frame_.setBlurRadius(kBlurSize * overlayAmount);
             logo_button_.setAlphaTransparency(1.0f - overlayAmount);
+            full_screen_button_.setAlphaTransparency(1.0f - overlayAmount);
         };
 
         state_listener_ = state.addListener([this] { stateChanged(); });
@@ -97,7 +100,28 @@ class TopFrame : public Frame {
 
     void stateChanged() {
         main_frame_.setDbRange(state_.min_dB(), state_.max_dB());
-        logo_button_.setVisible(! state_.hide_controls());
+        logo_button_.setVisible(content_visible_ && ! state_.hide_controls());
+        updateFullScreenButtonVisibility();
+    }
+
+    // Leaves only the black background. Drawing the analyzer also advances it, so only one frame can
+    // show it at a time.
+    void setContentVisible(bool visible) {
+        content_visible_ = visible;
+        main_frame_.setVisible(visible);
+        stateChanged();
+        redraw();
+    }
+
+    // Tells this frame that it's the one showing in the full screen window
+    void setFullScreen(bool full_screen) {
+        full_screen_ = full_screen;
+        full_screen_button_.setFullScreen(full_screen);
+        updateFullScreenButtonVisibility();
+    }
+
+    void onFullScreenClicked(std::function<void()> on_clicked) {
+        full_screen_button_.onToggle() = [callback = std::move(on_clicked)](Button*, bool) { callback(); };
     }
 
     void draw(Canvas& canvas) override {
@@ -107,11 +131,25 @@ class TopFrame : public Frame {
 
     void resized() override {
         logo_button_.setBounds(24, 16, 153, 27);
+
+        const auto button_size = 25;
+        const auto button_margin = 6;
+        full_screen_button_.setBounds(width() - button_size - button_margin, height() - button_size - button_margin,
+                                      button_size, button_size);
+        updateFullScreenButtonVisibility();
+
         overlay_.setBounds(localBounds());
         main_frame_.setBounds(localBounds());
     }
 
   private:
+    void updateFullScreenButtonVisibility() {
+        // Stays available when controls are hidden, as it's the way back from full screen. It only
+        // makes way for the parameter shelf in a narrow window.
+        constexpr auto k_min_width_for_button = 520;
+        full_screen_button_.setVisible(content_visible_ && (full_screen_ || state_.hide_controls() || width() >= k_min_width_for_button));
+    }
+
     State& state_;
 
     spectrum::Palette palette_;
@@ -119,7 +157,11 @@ class TopFrame : public Frame {
     MainFrame main_frame_;
 
     overlay::LogoButton logo_button_;
+    FullScreenButton full_screen_button_;
     overlay::OverlayFrame overlay_;
+
+    bool full_screen_ = false;
+    bool content_visible_ = true;
 
     std::unique_ptr<State::Listener> state_listener_;
 
