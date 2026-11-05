@@ -137,6 +137,21 @@ jobs:
             PLUGINS+=("$f")
           done < <(find "$ARTIFACT_DIR" -iname "*.vst3" -print0)
 
+          # On Windows we ship a single-file VST3 (WINDOWS_FOLDER_VST3 OFF), but
+          # pluginval's built-in Steinberg validator rejects anything that isn't
+          # a bundle. Validate the same binary wrapped in the bundle layout.
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            VST3_FILES=("${PLUGINS[@]}")
+            PLUGINS=()
+            for f in "${VST3_FILES[@]}"; do
+              NAME="$(basename "$f")"
+              BUNDLE="vst3-bundles/$NAME"
+              mkdir -p "$BUNDLE/Contents/x86_64-win"
+              cp "$f" "$BUNDLE/Contents/x86_64-win/$NAME"
+              PLUGINS+=("$BUNDLE")
+            done
+          fi
+
           # AU (AUV2) only exists on macOS. Validate the INSTALLED copy
           # (from ~/Library/Audio/Plug-Ins/Components), not the one still
           # sitting in artifacts/, since that's the only copy macOS's
