@@ -22,7 +22,7 @@ Grab the latest installer for your platform:
 
 - **macOS (arm64, VST3 / CLAP / AUv2):** [Spectrum-macOS.pkg](https://github.com/tadmn/spectrum/releases/latest/download/Spectrum-macOS.pkg)
 - **Windows (x86_64, VST3 / CLAP):** [Spectrum-Windows.exe](https://github.com/tadmn/spectrum/releases/latest/download/Spectrum-Windows.exe)
-- **Linux (x86_64, VST3 / CLAP):** [Spectrum-Linux.tar.gz](https://github.com/tadmn/spectrum/releases/latest/download/Spectrum-Linux.tar.gz) (Tested on Ubuntu 24.04)
+- **Linux (x86_64, VST3 / CLAP):** [Spectrum-Linux.tar.gz](https://github.com/tadmn/spectrum/releases/latest/download/Spectrum-Linux.tar.gz) (Built and tested on Ubuntu 26.04)
 
 See the [Releases page](https://github.com/tadmn/spectrum/releases) for release notes and older versions.
 
