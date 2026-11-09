@@ -38,7 +38,7 @@ class AnalyzerFrame : public Frame {
             auto& analyzer = *analyzer_processors_[i];
             analyzer.processAnalyzer(canvas.deltaTime());
 
-            const auto& style = channel_styles_[i];
+            const auto& style = separate_channels ? channel_styles_[i] : summed_style_;
             drawLine(canvas, analyzer.spectrumLine(), style.fill_color.withAlpha(fill_alpha), style.line_color);
         }
 
@@ -98,8 +98,10 @@ class AnalyzerFrame : public Frame {
     AnalyzerProcessors& analyzer_processors_;
     bool was_separate_channels_ = false;
 
+    const ChannelStyle summed_style_ { "", Color(0x358BDB), Color(0xFF63AFF2) };
+
     const std::array<ChannelStyle, 2> channel_styles_ { {
-        { "L", Color(0x358BDB), Color(0xFF63AFF2) },
+        { "L", Color(0x8A5CDB), Color(0xFFB794F6) },
         { "R", Color(0xDB8435), Color(0xFFF2AE63) },
     } };
 
