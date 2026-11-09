@@ -30,7 +30,7 @@ jobs:
             os: windows-latest
             artifact_id: windows
           - name: Linux
-            os: ubuntu-latest
+            os: ubuntu-26.04
             artifact_id: linux
 
     steps:
