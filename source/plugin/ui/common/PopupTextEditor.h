@@ -62,6 +62,10 @@ private:
                 if (on_close)
                     on_close();
 
+                // The editor sets an I-beam cursor on mouse enter, but it never receives a
+                // mouse exit when it's removed while hovered, so restore the arrow here
+                editor_.setCursorStyle(MouseCursor::Arrow);
+
                 parent.removeChild(this); // This will delete ourselves
             };
         }
