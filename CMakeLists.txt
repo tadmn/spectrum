@@ -7,7 +7,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum macOS deployment ve
 set(CMAKE_OSX_ARCHITECTURES "arm64") # Only support Apple silicon
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-project(spectrum VERSION 2.1.0 LANGUAGES C CXX)
+project(spectrum VERSION 2.1.1 LANGUAGES C CXX)
 
 option(USE_SANITIZER "Build and link with the address sanitizer" OFF)
 option(BUILD_TESTS "Build unit test executable" OFF)
