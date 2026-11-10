@@ -17,17 +17,29 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif ()
 
+# The browser build (see the web/ directory), configured with `emcmake cmake`
+if (EMSCRIPTEN)
+    # Applies to every dependency, as all code must agree on the exception handling ABI. Exceptions are
+    # needed for the state loading to recover from bad JSON
+    add_compile_options(-msimd128 -fwasm-exceptions)
+    add_link_options(-fwasm-exceptions)
+
+    # choc & visage rely on headers that newer versions of libc++ no longer include transitively
+    add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include cstdlib>"
+                        "$<$<COMPILE_LANGUAGE:CXX>:SHELL:-include vector>")
+endif ()
+
 # Must come before tad-bits, which adds its own older Catch2 when BUILD_TESTS is on and CPM keeps the first one added
 if (BUILD_TESTS)
     CPMAddPackage("gh:catchorg/Catch2@3.16.1")
 endif ()
 
-CPMAddPackage("gh:tadmn/tad-bits#1fc9790bdeed532f50b4e9c31704821d26628969")
+CPMAddPackage("gh:tadmn/tad-bits#067cc868dd6d247cfe23a762deae538cb96e546c")
 include(${tad-bits_SOURCE_DIR}/cmake/compile-options.cmake)
 
 CPMAddPackage("gh:tadmn/choc#5685fb59db9e60d31a35df7bff0ce7967beaaf25")
 CPMAddPackage("gh:tadmn/farbot#3cf08080cef9e7c0347fdc144e81b02f5e27a8ca")
-CPMAddPackage("gh:tadmn/FastFourier#e2e4ac1660471cbcefb65985b7db27dd6fdea01b")
+CPMAddPackage("gh:tadmn/FastFourier#2a51af46b9e0d857ab237aeed5f3452a38f22c9e")
 
 # Put the analyzer processor into a lib so it can easily be harnessed into the testrunner
 add_library(spectrum-analyzer-processor STATIC
@@ -41,12 +53,14 @@ add_compiler_warnings(spectrum-analyzer-processor)
 
 set(plugin_name "Spectrum")
 
-CPMAddPackage("gh:free-audio/clap#1.2.10")
-CPMAddPackage("gh:free-audio/clap-helpers#a380c978f429103e08afc1d17e9efbf3e3c96ee2")
+if (NOT EMSCRIPTEN)
+    CPMAddPackage("gh:free-audio/clap#1.2.10")
+    CPMAddPackage("gh:free-audio/clap-helpers#a380c978f429103e08afc1d17e9efbf3e3c96ee2")
 
-set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
-set(CLAP_WRAPPER_OUTPUT_NAME "${plugin_name}")
-CPMAddPackage("gh:free-audio/clap-wrapper@0.17.0")
+    set(CLAP_WRAPPER_DOWNLOAD_DEPENDENCIES TRUE)
+    set(CLAP_WRAPPER_OUTPUT_NAME "${plugin_name}")
+    CPMAddPackage("gh:free-audio/clap-wrapper@0.17.0")
+endif ()
 
 CPMAddPackage("gh:VitalAudio/visage#238d1b542002e03ad42accd076f938304e67971d")
 CPMAddPackage("gh:Neargye/magic_enum@0.9.8")
@@ -57,6 +71,50 @@ add_embedded_resources(embedded-font-resources "Fonts.h" "resources::fonts" "${f
 
 file(GLOB_RECURSE shader_files shaders/[vf]s_*.sc)
 visage_embed_shaders(embedded-shader-resources "Shaders.h" "resources::shaders" "${shader_files}")
+
+if (EMSCRIPTEN)
+    # The plugin's UI & analyzer running in a web page, fed by the browser's audio input
+    add_executable(spectrum-web source/web/WebMain.cpp)
+
+    target_include_directories(spectrum-web PRIVATE source/plugin)
+    target_link_libraries(spectrum-web PRIVATE
+            spectrum-analyzer-processor
+            visage embedded-font-resources embedded-shader-resources
+            magic_enum nlohmann_json
+    )
+
+    target_compile_definitions(spectrum-web PRIVATE
+            PLUGIN_NAME="${plugin_name}"
+            PRODUCT_VERSION="${PROJECT_VERSION}"
+            JSON_HAS_FILESYSTEM=0
+            JSON_HAS_EXPERIMENTAL_FILESYSTEM=0
+    )
+
+    add_compiler_warnings(spectrum-web)
+
+    # The EM_ASM macros trip these
+    target_compile_options(spectrum-web PRIVATE -Wno-gnu-zero-variadic-macro-arguments -Wno-dollar-in-identifier-extension)
+
+    target_link_options(spectrum-web PRIVATE
+            -sENVIRONMENT=web
+            -sALLOW_MEMORY_GROWTH
+            -sGL_ENABLE_GET_PROC_ADDRESS
+            "-sEXPORTED_FUNCTIONS=['_main','_pasteCallback']"
+            "-sEXPORTED_RUNTIME_METHODS=['ccall','UTF8ToString','stringToNewUTF8','HEAPF32']"
+    )
+
+    # Everything that gets hosted ends up in <build dir>/web
+    set(web_output_dir "${CMAKE_BINARY_DIR}/web")
+    set_target_properties(spectrum-web PROPERTIES OUTPUT_NAME "spectrum" RUNTIME_OUTPUT_DIRECTORY "${web_output_dir}")
+
+    file(GLOB web_files CONFIGURE_DEPENDS web/*)
+    add_custom_command(TARGET spectrum-web POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${web_files} "${web_output_dir}"
+            COMMENT "Copying web page files"
+    )
+
+    return()
+endif ()
 
 file(GLOB_RECURSE source_files source/plugin/*.cpp source/plugin/*.h)
 add_library(spectrum-impl STATIC ${source_files})

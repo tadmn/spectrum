@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Spectrum · Live Audio Spectrum Analyzer</title>
+    <meta name="description" content="A free, GPU accelerated audio spectrum analyzer. Try it live in your browser with your microphone.">
+    <meta name="theme-color" content="#000000">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23000'/%3E%3Cpath d='M3 26 C8 26 8 9 12 9 S16 20 19 17 S23 6 26 12 S28 24 29 26' fill='none' stroke='%2363AFF2' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+    <style>
+        :root {
+            color-scheme: dark;
+            --background: #000;
+            --card: rgba(16, 20, 24, 0.78);
+            --card-border: rgba(255, 255, 255, 0.09);
+            --text: #e9eef2;
+            --muted: #8d99a3;
+            --accent: #63aff2;
+            --accent-fill: #358bdb;
+            --error: #ff8a7a;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+        }
+
+        html, body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: var(--background);
+            color: var(--text);
+            overscroll-behavior: none;
+        }
+
+        /* Sized by the analyzer. Must not have a border or padding, or mouse positions will be off. */
+        #canvas {
+            display: block;
+            border: 0;
+            outline: none;
+            touch-action: none;
+        }
+
+        .scrim {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.45);
+            transition: opacity 0.25s ease;
+        }
+
+        .scrim[hidden] {
+            display: none;
+        }
+
+        .card {
+            box-sizing: border-box;
+            width: min(380px, 100%);
+            padding: 28px 28px 22px;
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            background: var(--card);
+            -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+            text-align: center;
+        }
+
+        .card h1 {
+            margin: 0 0 8px;
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.32em;
+            text-indent: 0.32em;
+            text-transform: uppercase;
+        }
+
+        .card p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .start-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            margin: 22px 0 12px;
+            padding: 13px 18px;
+            border: 0;
+            border-radius: 10px;
+            background: var(--accent-fill);
+            color: #fff;
+            font: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s ease, opacity 0.15s ease;
+        }
+
+        .start-button:hover {
+            background: #4a9be6;
+        }
+
+        .start-button:focus-visible, .input-picker select:focus-visible, .links a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        .start-button:disabled {
+            opacity: 0.55;
+            cursor: default;
+        }
+
+        .start-button svg {
+            width: 18px;
+            height: 18px;
+            flex: none;
+        }
+
+        .error {
+            margin-top: 4px !important;
+            color: var(--error) !important;
+        }
+
+        .error:empty {
+            display: none;
+        }
+
+        .links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px 18px;
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--card-border);
+            font-size: 13px;
+        }
+
+        .links a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+        /* Sits left of the dB labels and right of the logo, and fades out while the mouse is idle */
+        .input-picker {
+            position: fixed;
+            top: 12px;
+            right: 52px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            max-width: max(120px, calc(100vw - 250px));
+            padding: 0 4px 0 10px;
+            border: 1px solid var(--card-border);
+            border-radius: 999px;
+            background: rgba(16, 20, 24, 0.7);
+            color: var(--muted);
+            transition: opacity 0.4s ease;
+        }
+
+        .input-picker[hidden] {
+            display: none;
+        }
+
+        .input-picker.idle:not(:hover):not(:focus-within) {
+            opacity: 0;
+        }
+
+        .input-picker svg {
+            width: 14px;
+            height: 14px;
+            flex: none;
+        }
+
+        .input-picker select {
+            min-width: 0;
+            max-width: 100%;
+            padding: 6px 4px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text);
+            font: inherit;
+            font-size: 12px;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .input-picker option {
+            background: #12171b;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+
+    <div id="start" class="scrim ui">
+        <div class="card" role="dialog" aria-labelledby="start-title">
+            <h1 id="start-title">Spectrum</h1>
+            <p>An audio spectrum analyzer, running live in your browser.</p>
+
+            <button id="start-button" class="start-button" type="button" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="9" y="2" width="6" height="12" rx="3"/>
+                    <path d="M5 10a7 7 0 0 0 14 0M12 17v5M8 22h8"/>
+                </svg>
+                <span id="start-label">Loading…</span>
+            </button>
+
+            <p>Audio is analyzed on your device and never leaves it.</p>
+            <p id="start-error" class="error" role="alert"></p>
+
+            <div class="links">
+                <a href="https://github.com/tadmn/spectrum/releases/latest" target="_blank" rel="noopener">Get the plugin (VST3 · CLAP · AU)</a>
+                <a href="https://github.com/tadmn/spectrum" target="_blank" rel="noopener">Source</a>
+            </div>
+        </div>
+    </div>
+
+    <label id="input-picker" class="input-picker ui" hidden>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0M12 17v5"/>
+        </svg>
+        <select id="input-device" aria-label="Audio input"></select>
+    </label>
+
+    <noscript>
+        <div class="scrim"><div class="card"><h1>Spectrum</h1><p>JavaScript is needed to run the analyzer.</p></div></div>
+    </noscript>
+
+    <script src="spectrum-page.js"></script>
+    <script src="spectrum.js" async></script>
+</body>
+</html>

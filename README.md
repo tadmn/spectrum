@@ -14,11 +14,16 @@ https://github.com/user-attachments/assets/8fab4f9f-5aed-48a2-9bb7-50d1d867c713.
 - Stereo instances can show the left and right channels separately or summed together
 - Normalized output that allows easy integration into any 2D graphics library
 
-## Download
+## Use In Your Browser
+https://tadmn.github.io/spectrum
 
+Run the analyzer in your browser on your microphone, with nothing to install. Audio is analyzed on your device and never
+leaves it. 
+
+## Download
 [![Spectrum CI](https://github.com/tadmn/spectrum/actions/workflows/spectrum.yml/badge.svg)](https://github.com/tadmn/spectrum/actions/workflows/spectrum.yml)
 
-Grab the latest installer for your platform: 
+Grab the latest plugin installer for your platform: 
 
 - **macOS (arm64, VST3 / CLAP / AUv2):** [Spectrum-macOS.pkg](https://github.com/tadmn/spectrum/releases/latest/download/Spectrum-macOS.pkg)
 - **Windows (x86_64, VST3 / CLAP):** [Spectrum-Windows.exe](https://github.com/tadmn/spectrum/releases/latest/download/Spectrum-Windows.exe)
@@ -51,6 +56,15 @@ You will also need to install the following dependencies:
 sudo apt-get update
 sudo apt install libgl1-mesa-dev libxrandr-dev libfontconfig1-dev libx11-xcb-dev libxcb-present-dev
 ```
+
+### Web
+Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html) (e.g. `brew install emscripten`), then:
+```
+emcmake cmake -B build-web -DCMAKE_BUILD_TYPE=Release
+cmake --build build-web --target spectrum-web
+python3 -m http.server -d build-web/web 8000
+```
+Then open http://localhost:8000. Browsers only allow microphone access over HTTPS or on `localhost`. The [Web workflow](./.github/workflows/web.yml) publishes the page to GitHub Pages on every push to `main`.
 
 ## Using in Your Own Project
 The brains of the analyzer are in [AnalyzerProcessor.h](./source/analyzer/AnalyzerProcessor.h). The easiest way to use this is to copy the class .h/.cpp files to your project and then link with the required dependencies. See `spectrum-analyzer-processor` target in [CMakeLists.txt](./CMakeLists.txt) for the list of dependencies. You can then feed the output into your own graphics library of choice. There is an example in the comments at the top of [AnalyzerProcessor.h](./source/analyzer/AnalyzerProcessor.h) that shows how this can be done.
