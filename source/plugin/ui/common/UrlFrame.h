@@ -6,6 +6,8 @@
 #if defined(_WIN32)
 #include <windows.h>
 #include <shellapi.h>
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten.h>
 #else
 #include <unistd.h>
 #endif
@@ -49,6 +51,10 @@ public:
         }
 #elif defined(_WIN32)
         ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+#elif defined(__EMSCRIPTEN__)
+        // Opens the link in a new browser tab, so the analyzer page stays open. 'noopener' keeps the new
+        // page from getting a handle back to this one through window.opener
+        EM_ASM({ window.open(UTF8ToString($0), '_blank', 'noopener'); }, url.c_str());
 #endif
     }
 

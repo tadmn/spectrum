@@ -1,5 +1,6 @@
 
 #include "SpectrumPlugin.h"
+#include "AnalyzeAudio.h"
 
 #include "ui/MainFrame.h"
 
@@ -83,29 +84,10 @@ clap_process_status SpectrumPlugin::process(const clap_process* process) noexcep
     auto in = cb::createChannelArrayView(process->audio_inputs->data32,
                                          process->audio_inputs->channel_count, process->frames_count);
 
-    const auto num_channels = in.getNumChannels();
-    if (num_channels == 0 || num_channels > analyzer_processors_.size()) {
+    if (! analyzeAudio(in, state_, analyzer_processors_, mix_buffer_)) {
         tb_assert(false); // Unsupported channel count
         return CLAP_PROCESS_ERROR;
     }
-
-    if (num_channels > 1 && state_.channel_mode() == ChannelMode::Summed) {
-        // Average the input channels into a single buffer to be processed
-        tb_assert(mix_buffer_.getNumFrames() >= in.getNumFrames());
-        auto mix = mix_buffer_.getStart(in.getNumFrames());
-        copy(mix, in.getChannel(0));
-        for (uint32_t channel = 1; channel < num_channels; ++channel)
-            add(mix, in.getChannel(channel));
-
-        applyGain(mix, 1.0f / static_cast<float>(num_channels));
-        analyzer_processors_.front()->processAudio(mix);
-    } else {
-        analyzer_processors_.front()->processAudio(in.getChannelRange({ 0, 1 }));
-    }
-
-    // Fed in every mode so that they have current audio as soon as separate channels are turned on
-    for (uint32_t channel = 1; channel < num_channels; ++channel)
-        analyzer_processors_[channel]->processAudio(in.getChannelRange({ channel, channel + 1 }));
 
     // Hosts are allowed to out-of-place process even if we set `in_place_pair` in the port handling
     if (process->audio_inputs->data32 != process->audio_outputs->data32) {

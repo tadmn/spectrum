@@ -1,0 +1,64 @@
+name: Web
+
+# Builds the browser version of the analyzer and publishes it to GitHub Pages
+
+on:
+  workflow_dispatch: # Allows publishing from the UI
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deployment finish rather than leaving the site half updated
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  EMSDK_VERSION: latest
+  BUILD_DIR: build-web
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Install Emscripten
+        run: |
+          git clone --depth 1 https://github.com/emscripten-core/emsdk.git "$RUNNER_TEMP/emsdk"
+          "$RUNNER_TEMP/emsdk/emsdk" install ${{ env.EMSDK_VERSION }}
+          "$RUNNER_TEMP/emsdk/emsdk" activate ${{ env.EMSDK_VERSION }}
+
+      - name: Configure
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          emcmake cmake -B ${{ env.BUILD_DIR }} -G Ninja -DCMAKE_BUILD_TYPE=Release .
+
+      - name: Build
+        run: |
+          source "$RUNNER_TEMP/emsdk/emsdk_env.sh"
+          cmake --build ${{ env.BUILD_DIR }} --target spectrum-web
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ env.BUILD_DIR }}/web
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-26.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
